@@ -64,9 +64,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     )?
     .listen();
 
-
     pin_mut!(stream);
-
 
     let mut counter = 0;
     loop {
@@ -225,16 +223,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 }
 
-
 async fn handle_cred_message(auth_cred_message: AuthCredMessage, dht_manager: &mut DHTManager) {
-    let ret = dht_manager.get_auth_cred(&auth_cred_message.user, &auth_cred_message.pass).await;
+    let ret = dht_manager
+        .get_auth_cred(&auth_cred_message.user, &auth_cred_message.pass)
+        .await;
 
     match ret {
         Ok(m) => {
             let _r = auth_cred_message.responder.send(Ok(m));
-        },
+        }
         _ => {
-            let _r = auth_cred_message.responder.send(Err("cred not found".to_owned()));
+            let _r = auth_cred_message
+                .responder
+                .send(Err("cred not found".to_owned()));
         }
     }
 }
@@ -411,7 +412,7 @@ async fn handle_ble_update_message(message: BleBeaconMessage, dht_manager: &mut 
                 .await;
             }
 
-            if topic_name == "ble_valve"  && (message.payload == "0" || message.payload == "1") {
+            if topic_name == "ble_valve" && (message.payload == "0" || message.payload == "1") {
                 handle_ble_valve_update(
                     dht_manager,
                     &message.mac_address,

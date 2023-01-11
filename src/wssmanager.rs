@@ -1,11 +1,4 @@
-use axum::{
-    extract::Extension,
-    http,
-    response::IntoResponse,
-    routing::{get},
-    Router,
-
-};
+use axum::{extract::Extension, http, response::IntoResponse, routing::get, Router};
 
 use axum_auth::AuthBasic;
 
@@ -19,9 +12,10 @@ use tower_http::cors::{Any, CorsLayer};
 
 use axum_server::tls_rustls::RustlsConfig;
 
-
-fn parse_esp32_message(shelly_message: &serde_json::Value, updates_channel: &broadcast::Sender<BleBeaconMessage>) -> bool {
-
+fn parse_esp32_message(
+    shelly_message: &serde_json::Value,
+    updates_channel: &broadcast::Sender<BleBeaconMessage>,
+) -> bool {
     if let Some(message_type) = shelly_message.get("messageType") {
         if message_type.as_str().unwrap() == "propertyStatus" {
             if let Some(data) = shelly_message.get("data") {
@@ -44,26 +38,25 @@ fn parse_esp32_message(shelly_message: &serde_json::Value, updates_channel: &bro
                                 }
                             } else {
                                 if prop_str == "valve_operation" {
-                                    if let Some(valve_operation) = status_result.get("valve_operation") {
-                                        let valve_operation_string = valve_operation.as_str().unwrap();
+                                    if let Some(valve_operation) =
+                                        status_result.get("valve_operation")
+                                    {
+                                        let valve_operation_string =
+                                            valve_operation.as_str().unwrap();
 
                                         let b = BleBeaconMessage::from(valve_operation_string);
                                         let _ret = updates_channel.send(b);
                                         return true;
                                     }
-
                                 }
                             }
                         }
                     }
-
-
                 }
             }
         }
     }
     false
-
 }
 
 pub struct WssManager {
@@ -80,7 +73,6 @@ pub struct WssManager {
 
 impl WssManager {
     pub async fn new(http_port: u16) -> WssManager {
-
         let addr = SocketAddr::from(([0, 0, 0, 0], http_port));
 
         let config = RustlsConfig::from_pem_file(
@@ -90,8 +82,9 @@ impl WssManager {
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("data")
                 .join("Key.pem"),
-        ).await.unwrap();
-
+        )
+        .await
+        .unwrap();
 
         let (tx_auth_cred, rx_auth_cred) = mpsc::channel(32);
 
@@ -111,7 +104,6 @@ impl WssManager {
             broadcast::channel::<serde_json::Value>(16);
 
         let channel_of_actuator_updates_tx_copy = channel_of_actuator_updates_tx.clone();
-
 
         let app = Router::new()
             .route(
@@ -143,7 +135,7 @@ impl WssManager {
             command_channel_rx,
             channel_of_actuator_updates_tx,
             channel_of_actuator_updates_rx,
-            rx_auth_cred
+            rx_auth_cred,
         }
     }
 
@@ -153,9 +145,8 @@ impl WssManager {
         Extension(updates_channel): Extension<broadcast::Sender<BleBeaconMessage>>,
         Extension(updates_actuator_channel): Extension<broadcast::Sender<serde_json::Value>>,
         Extension(tx_cred): Extension<Sender<AuthCredMessage>>,
-        AuthBasic((user, password)): AuthBasic
+        AuthBasic((user, password)): AuthBasic,
     ) -> impl IntoResponse {
-
         let mut command_receive_channel = command_channel.subscribe();
 
         ws.on_upgrade(|mut socket| async move {

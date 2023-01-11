@@ -1,4 +1,4 @@
-use serde::{Serialize};
+use serde::Serialize;
 
 use tokio::sync::oneshot;
 
@@ -8,7 +8,7 @@ type AuthCredResponder = oneshot::Sender<Result<serde_json::Value, String>>;
 pub struct AuthCredMessage {
     pub user: String,
     pub pass: String,
-    pub responder: AuthCredResponder
+    pub responder: AuthCredResponder,
 }
 
 #[derive(Debug, Clone, Serialize)]

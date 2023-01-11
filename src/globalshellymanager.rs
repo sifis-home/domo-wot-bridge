@@ -63,7 +63,6 @@ impl GlobalShellyManager {
         Err("shelly not found".into())
     }
 
-
     pub async fn sleep_long(&self) -> Result<serde_json::Value, Box<dyn Error>> {
         tokio::time::sleep(Duration::from_secs(3600)).await;
         Err("sleep long".into())
