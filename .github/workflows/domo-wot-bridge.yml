@@ -181,7 +181,7 @@ jobs:
 
     - name: Install weighted-code-coverage
       env:
-        WCC_LINK: https://github.com/giovannitangredi/weighted-code-coverage/releases/download
+        WCC_LINK: https://github.com/SoftengPoliTo/weighted-code-coverage/releases/download
         WCC_VERSION: v0.1.0
         WCC_BINARY: weighted-code-coverage-0.1.0-x86_64-unknown-linux-gnu.tar.gz
       run: |
