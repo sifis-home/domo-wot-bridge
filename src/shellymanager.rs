@@ -42,8 +42,8 @@ impl ShellyManager {
         loop {
             let ws_request = http::Request::builder()
                 .method("GET")
-                .header("Host", url.clone())
-                .header("Origin", url.clone())
+                .header("Host", url)
+                .header("Origin", url)
                 .header("Connection", "Upgrade")
                 .header("Upgrade", "websocket")
                 .header("Sec-WebSocket-Version", "13")
@@ -71,7 +71,7 @@ impl ShellyManager {
                         let (write_shelly, read_shelly) = ws_shelly.split();
                         return Ok((write_shelly, read_shelly));
                        }else {
-                         connect_attempts_counter = connect_attempts_counter + 1;
+                         connect_attempts_counter += 1;
                          println!("{:?}", ws_shelly_res);
                          if connect_attempts_counter == 2 {
                             return Err("connect error".into());
@@ -83,7 +83,7 @@ impl ShellyManager {
 
                 _ = tokio::time::sleep(Duration::from_millis(10000)) => {
                        println!("Connect to shelly timeout");
-                       connect_attempts_counter = connect_attempts_counter + 1;
+                       connect_attempts_counter += 1;
 
                        if connect_attempts_counter == 2 {
                         return Err("connect error".into());
@@ -102,11 +102,11 @@ impl ShellyManager {
         user_login: &str,
         user_password: &str,
     ) -> Result<ShellyManager, Box<dyn Error>> {
-        let mac = mac_address.replace(":", "");
+        let mac = mac_address.replace(':', "");
         let url = "wss://".to_owned() + mdns_name + "/things/" + topic_name + "-" + &mac;
 
         let (write_shelly, read_shelly) =
-            ShellyManager::connect_to_shelly(&ip, &url, user_login, user_password).await?;
+            ShellyManager::connect_to_shelly(ip, &url, user_login, user_password).await?;
 
         Ok(ShellyManager {
             ip: ip.to_owned(),
@@ -142,11 +142,11 @@ impl ShellyManager {
     }
 
     pub async fn send_action(&mut self, message: &serde_json::Value) {
-        if self.last_action_timestamp != SystemTime::UNIX_EPOCH {
-            if self.last_action_timestamp.elapsed().unwrap().as_millis() < 300 {
-                println!("Skipping action");
-                return;
-            }
+        if self.last_action_timestamp != SystemTime::UNIX_EPOCH
+            && self.last_action_timestamp.elapsed().unwrap().as_millis() < 300
+        {
+            println!("Skipping action");
+            return;
         }
 
         let _ret = self

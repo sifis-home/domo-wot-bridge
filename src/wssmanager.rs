@@ -36,18 +36,14 @@ fn parse_esp32_message(
                                     let _ret = updates_channel.send(b);
                                     return true;
                                 }
-                            } else {
-                                if prop_str == "valve_operation" {
-                                    if let Some(valve_operation) =
-                                        status_result.get("valve_operation")
-                                    {
-                                        let valve_operation_string =
-                                            valve_operation.as_str().unwrap();
+                            } else if prop_str == "valve_operation" {
+                                if let Some(valve_operation) = status_result.get("valve_operation")
+                                {
+                                    let valve_operation_string = valve_operation.as_str().unwrap();
 
-                                        let b = BleBeaconMessage::from(valve_operation_string);
-                                        let _ret = updates_channel.send(b);
-                                        return true;
-                                    }
+                                    let b = BleBeaconMessage::from(valve_operation_string);
+                                    let _ret = updates_channel.send(b);
+                                    return true;
                                 }
                             }
                         }
@@ -88,7 +84,7 @@ impl WssManager {
 
         let (tx_auth_cred, rx_auth_cred) = mpsc::channel(32);
 
-        let tx_auth_cred_copy = tx_auth_cred.clone();
+        let tx_auth_cred_copy = tx_auth_cred;
 
         let (command_channel_tx, command_channel_rx) =
             broadcast::channel::<ESP32CommandMessage>(16);
@@ -186,11 +182,25 @@ impl WssManager {
                 tokio::select! {
                         // received command from the dht
                         command = command_receive_channel.recv() => {
-                            match command {
-                                Ok(cmd) => {
-                                    match cmd.command_type {
-                                        ESP32CommandType::ValveCommand => {
-                                            println!("Received valve command");
+                            if let Ok(cmd) = command {
+                                match cmd.command_type {
+                                    ESP32CommandType::ValveCommand => {
+                                        println!("Received valve command");
+                                        if let Some(shelly_action_payload) = cmd.payload.get("shelly_action") {
+                                                    let shelly_action = serde_json::json!({ "shelly_action": shelly_action_payload });
+
+                                                    let message = serde_json::json!({
+                                                        "messageType": "requestAction",
+                                                        "data": shelly_action
+                                                    });
+                                                    let m = Message::Text(serde_json::to_string(&message).unwrap());
+                                                    let _ret = socket.send(m).await;
+
+                                        }
+                                    }
+                                    ESP32CommandType::ActuatorCommand => {
+                                        println!("Received Actuator command");
+                                        if cmd.mac_address == esp32_mac_address {
                                             if let Some(shelly_action_payload) = cmd.payload.get("shelly_action") {
                                                         let shelly_action = serde_json::json!({ "shelly_action": shelly_action_payload });
 
@@ -200,29 +210,11 @@ impl WssManager {
                                                         });
                                                         let m = Message::Text(serde_json::to_string(&message).unwrap());
                                                         let _ret = socket.send(m).await;
-
-                                            }
-                                        }
-                                        ESP32CommandType::ActuatorCommand => {
-                                            println!("Received Actuator command");
-                                            if cmd.mac_address == esp32_mac_address {
-                                                if let Some(shelly_action_payload) = cmd.payload.get("shelly_action") {
-                                                            let shelly_action = serde_json::json!({ "shelly_action": shelly_action_payload });
-
-                                                            let message = serde_json::json!({
-                                                                "messageType": "requestAction",
-                                                                "data": shelly_action
-                                                            });
-                                                            let m = Message::Text(serde_json::to_string(&message).unwrap());
-                                                            let _ret = socket.send(m).await;
-                                                }
                                             }
                                         }
                                     }
-                                },
-                                _=> {}
+                                }
                             }
-
                         }
                         // received message from an esp32
                         Some(msg) = socket.recv() => {

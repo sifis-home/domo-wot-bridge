@@ -32,13 +32,13 @@ pub struct BleBeaconMessage {
 
 impl BleBeaconMessage {
     pub fn from(socket_string: &str) -> Self {
-        let split = socket_string.split(" ");
-        let mut count = 0;
+        let split = socket_string.split(' ');
+        let _count = 0;
         let mut mac_address = String::from("");
         let mut payload = String::from("");
         let mut rssi: i64 = 0;
 
-        for part in split {
+        for (count, part) in split.enumerate() {
             if count == 0 {
                 mac_address = part.to_string();
             }
@@ -49,8 +49,6 @@ impl BleBeaconMessage {
             if count == 2 {
                 rssi = part.parse::<i64>().unwrap();
             }
-
-            count = count + 1;
         }
         BleBeaconMessage {
             mac_address,

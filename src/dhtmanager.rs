@@ -159,7 +159,7 @@ impl DHTManager {
         &mut self,
         mac_address_req: &str,
     ) -> Result<serde_json::Value, Box<dyn Error>> {
-        if self.topic_cache.contains_key(mac_address_req) == true {
+        if self.topic_cache.contains_key(mac_address_req) {
             return match self.topic_cache.get(mac_address_req) {
                 Some(topic_entry) => {
                     if topic_entry
@@ -206,7 +206,7 @@ impl DHTManager {
             .send(Message::Text(message.to_string()))
             .await;
 
-        println!("Sent message: {} ", message.to_string());
+        println!("Sent message: {} ", message);
     }
 
     fn handle_volatile_command(

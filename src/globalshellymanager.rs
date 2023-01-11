@@ -90,7 +90,7 @@ impl GlobalShellyManager {
     }
 
     pub async fn check_if_reconnect_needed(&mut self) {
-        let mut idx = 0 as usize;
+        let mut idx = 0_usize;
 
         while idx < self.shelly_list.len() {
             if self.shelly_list[idx]
@@ -111,7 +111,7 @@ impl GlobalShellyManager {
                 }
             }
 
-            idx = idx + 1;
+            idx += 1;
         }
     }
 }
