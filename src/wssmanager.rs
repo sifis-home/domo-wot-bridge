@@ -1,11 +1,4 @@
-use axum::{
-    extract::Extension,
-    http,
-    response::IntoResponse,
-    routing::{get},
-    Router,
-
-};
+use axum::{extract::Extension, http, response::IntoResponse, routing::get, Router};
 
 use axum_auth::AuthBasic;
 
@@ -19,9 +12,10 @@ use tower_http::cors::{Any, CorsLayer};
 
 use axum_server::tls_rustls::RustlsConfig;
 
-
-fn parse_esp32_message(shelly_message: &serde_json::Value, updates_channel: &broadcast::Sender<BleBeaconMessage>) -> bool {
-
+fn parse_esp32_message(
+    shelly_message: &serde_json::Value,
+    updates_channel: &broadcast::Sender<BleBeaconMessage>,
+) -> bool {
     if let Some(message_type) = shelly_message.get("messageType") {
         if message_type.as_str().unwrap() == "propertyStatus" {
             if let Some(data) = shelly_message.get("data") {
@@ -42,28 +36,23 @@ fn parse_esp32_message(shelly_message: &serde_json::Value, updates_channel: &bro
                                     let _ret = updates_channel.send(b);
                                     return true;
                                 }
-                            } else {
-                                if prop_str == "valve_operation" {
-                                    if let Some(valve_operation) = status_result.get("valve_operation") {
-                                        let valve_operation_string = valve_operation.as_str().unwrap();
+                            } else if prop_str == "valve_operation" {
+                                if let Some(valve_operation) = status_result.get("valve_operation")
+                                {
+                                    let valve_operation_string = valve_operation.as_str().unwrap();
 
-                                        let b = BleBeaconMessage::from(valve_operation_string);
-                                        let _ret = updates_channel.send(b);
-                                        return true;
-                                    }
-
+                                    let b = BleBeaconMessage::from(valve_operation_string);
+                                    let _ret = updates_channel.send(b);
+                                    return true;
                                 }
                             }
                         }
                     }
-
-
                 }
             }
         }
     }
     false
-
 }
 
 pub struct WssManager {
@@ -80,7 +69,6 @@ pub struct WssManager {
 
 impl WssManager {
     pub async fn new(http_port: u16) -> WssManager {
-
         let addr = SocketAddr::from(([0, 0, 0, 0], http_port));
 
         let config = RustlsConfig::from_pem_file(
@@ -90,12 +78,13 @@ impl WssManager {
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("data")
                 .join("Key.pem"),
-        ).await.unwrap();
-
+        )
+        .await
+        .unwrap();
 
         let (tx_auth_cred, rx_auth_cred) = mpsc::channel(32);
 
-        let tx_auth_cred_copy = tx_auth_cred.clone();
+        let tx_auth_cred_copy = tx_auth_cred;
 
         let (command_channel_tx, command_channel_rx) =
             broadcast::channel::<ESP32CommandMessage>(16);
@@ -111,7 +100,6 @@ impl WssManager {
             broadcast::channel::<serde_json::Value>(16);
 
         let channel_of_actuator_updates_tx_copy = channel_of_actuator_updates_tx.clone();
-
 
         let app = Router::new()
             .route(
@@ -143,7 +131,7 @@ impl WssManager {
             command_channel_rx,
             channel_of_actuator_updates_tx,
             channel_of_actuator_updates_rx,
-            rx_auth_cred
+            rx_auth_cred,
         }
     }
 
@@ -153,9 +141,8 @@ impl WssManager {
         Extension(updates_channel): Extension<broadcast::Sender<BleBeaconMessage>>,
         Extension(updates_actuator_channel): Extension<broadcast::Sender<serde_json::Value>>,
         Extension(tx_cred): Extension<Sender<AuthCredMessage>>,
-        AuthBasic((user, password)): AuthBasic
+        AuthBasic((user, password)): AuthBasic,
     ) -> impl IntoResponse {
-
         let mut command_receive_channel = command_channel.subscribe();
 
         ws.on_upgrade(|mut socket| async move {
@@ -195,11 +182,25 @@ impl WssManager {
                 tokio::select! {
                         // received command from the dht
                         command = command_receive_channel.recv() => {
-                            match command {
-                                Ok(cmd) => {
-                                    match cmd.command_type {
-                                        ESP32CommandType::ValveCommand => {
-                                            println!("Received valve command");
+                            if let Ok(cmd) = command {
+                                match cmd.command_type {
+                                    ESP32CommandType::ValveCommand => {
+                                        println!("Received valve command");
+                                        if let Some(shelly_action_payload) = cmd.payload.get("shelly_action") {
+                                                    let shelly_action = serde_json::json!({ "shelly_action": shelly_action_payload });
+
+                                                    let message = serde_json::json!({
+                                                        "messageType": "requestAction",
+                                                        "data": shelly_action
+                                                    });
+                                                    let m = Message::Text(serde_json::to_string(&message).unwrap());
+                                                    let _ret = socket.send(m).await;
+
+                                        }
+                                    }
+                                    ESP32CommandType::ActuatorCommand => {
+                                        println!("Received Actuator command");
+                                        if cmd.mac_address == esp32_mac_address {
                                             if let Some(shelly_action_payload) = cmd.payload.get("shelly_action") {
                                                         let shelly_action = serde_json::json!({ "shelly_action": shelly_action_payload });
 
@@ -209,29 +210,11 @@ impl WssManager {
                                                         });
                                                         let m = Message::Text(serde_json::to_string(&message).unwrap());
                                                         let _ret = socket.send(m).await;
-
-                                            }
-                                        }
-                                        ESP32CommandType::ActuatorCommand => {
-                                            println!("Received Actuator command");
-                                            if cmd.mac_address == esp32_mac_address {
-                                                if let Some(shelly_action_payload) = cmd.payload.get("shelly_action") {
-                                                            let shelly_action = serde_json::json!({ "shelly_action": shelly_action_payload });
-
-                                                            let message = serde_json::json!({
-                                                                "messageType": "requestAction",
-                                                                "data": shelly_action
-                                                            });
-                                                            let m = Message::Text(serde_json::to_string(&message).unwrap());
-                                                            let _ret = socket.send(m).await;
-                                                }
                                             }
                                         }
                                     }
-                                },
-                                _=> {}
+                                }
                             }
-
                         }
                         // received message from an esp32
                         Some(msg) = socket.recv() => {

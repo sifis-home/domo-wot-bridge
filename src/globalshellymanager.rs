@@ -63,7 +63,6 @@ impl GlobalShellyManager {
         Err("shelly not found".into())
     }
 
-
     pub async fn sleep_long(&self) -> Result<serde_json::Value, Box<dyn Error>> {
         tokio::time::sleep(Duration::from_secs(3600)).await;
         Err("sleep long".into())
@@ -91,7 +90,7 @@ impl GlobalShellyManager {
     }
 
     pub async fn check_if_reconnect_needed(&mut self) {
-        let mut idx = 0 as usize;
+        let mut idx = 0_usize;
 
         while idx < self.shelly_list.len() {
             if self.shelly_list[idx]
@@ -112,7 +111,7 @@ impl GlobalShellyManager {
                 }
             }
 
-            idx = idx + 1;
+            idx += 1;
         }
     }
 }

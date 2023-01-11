@@ -11,7 +11,7 @@ use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
 pub enum DHTCommand {
     ActuatorCommand(serde_json::Value),
-    ValveCommand(serde_json::Value)
+    ValveCommand(serde_json::Value),
 }
 
 pub struct TopicEntry {
@@ -95,9 +95,7 @@ impl DHTManager {
                         let user_password_str = user_password.as_str().unwrap();
                         if user_login_str == user && user_password_str == password {
                             let mac = t.get("topic_uuid").unwrap().as_str().unwrap();
-                            let json_ret = serde_json::json!(
-                                { "mac_address": mac }
-                            );
+                            let json_ret = serde_json::json!({ "mac_address": mac });
                             return Ok(json_ret);
                         }
                     }
@@ -106,7 +104,6 @@ impl DHTManager {
         }
 
         Err("cred not found".into())
-
     }
 
     pub async fn get_topic_with_http(
@@ -162,7 +159,7 @@ impl DHTManager {
         &mut self,
         mac_address_req: &str,
     ) -> Result<serde_json::Value, Box<dyn Error>> {
-        if self.topic_cache.contains_key(mac_address_req) == true {
+        if self.topic_cache.contains_key(mac_address_req) {
             return match self.topic_cache.get(mac_address_req) {
                 Some(topic_entry) => {
                     if topic_entry
@@ -209,7 +206,7 @@ impl DHTManager {
             .send(Message::Text(message.to_string()))
             .await;
 
-        println!("Sent message: {} ", message.to_string());
+        println!("Sent message: {} ", message);
     }
 
     fn handle_volatile_command(
