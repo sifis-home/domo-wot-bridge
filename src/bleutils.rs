@@ -13,7 +13,7 @@ pub struct AtcResult {
     pub battery: f32,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum ContactStatus {
     Open,
     Close,
@@ -293,10 +293,14 @@ mod tests {
     #[cfg(test)]
     #[test]
     fn test_contact_parse() {
+        use super::ContactResult;
+
         let mac = "e4:aa:ec:53:9e:2b";
         let key = "6b1db353566f01c6d3585100b9d348f4";
         let data = "1d020106191695fe58588b09482b9e53ecaae46db81e190d00007d32b33ccb";
 
-        let ret = parse_contact_sensor(&mac, &data, &key);
+        let ContactResult { state } = parse_contact_sensor(&mac, &data, &key).unwrap();
+
+        assert_eq!(state, crate::bleutils::ContactStatus::Close);
     }
 }
