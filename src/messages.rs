@@ -15,7 +15,7 @@ pub struct AuthCredMessage {
 pub enum ESP32CommandType {
     ActuatorCommand,
     ValveCommand,
-    PingCommand
+    PingCommand,
 }
 #[derive(Debug, Clone, Serialize)]
 pub struct ESP32CommandMessage {

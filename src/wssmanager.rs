@@ -5,14 +5,13 @@ use axum_auth::AuthBasic;
 use crate::messages::{AuthCredMessage, BleBeaconMessage, ESP32CommandMessage, ESP32CommandType};
 use axum::extract::ws::Message;
 use axum::extract::ws::WebSocketUpgrade;
-use std::{net::SocketAddr, path::PathBuf};
 use std::time::SystemTime;
+use std::{net::SocketAddr, path::PathBuf};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{broadcast, mpsc, oneshot};
 use tower_http::cors::{Any, CorsLayer};
 
 use axum_server::tls_rustls::RustlsConfig;
-
 
 fn parse_esp32_message(
     shelly_message: &serde_json::Value,
@@ -28,14 +27,18 @@ fn parse_esp32_message(
 
                     if let Some(updated_properties) = status_result.get("updated_properties") {
                         let vec_prop = updated_properties.as_array().unwrap();
-                        let mac_address_actuator = status_result.get("mac_address").unwrap().as_str().unwrap();
+                        let mac_address_actuator =
+                            status_result.get("mac_address").unwrap().as_str().unwrap();
                         for prop in vec_prop {
                             let prop_str = prop.as_str().unwrap();
                             if prop_str == "beacon_adv" {
                                 if let Some(beacon_adv) = status_result.get("beacon_adv") {
                                     let beacon_adv_string = beacon_adv.as_str().unwrap();
 
-                                    let b = BleBeaconMessage::from(beacon_adv_string, mac_address_actuator);
+                                    let b = BleBeaconMessage::from(
+                                        beacon_adv_string,
+                                        mac_address_actuator,
+                                    );
                                     let _ret = updates_channel.send(b);
                                     return true;
                                 }
@@ -47,7 +50,10 @@ fn parse_esp32_message(
                                         let valve_operation_string =
                                             valve_operation.as_str().unwrap();
 
-                                        let b = BleBeaconMessage::from(valve_operation_string, mac_address_actuator);
+                                        let b = BleBeaconMessage::from(
+                                            valve_operation_string,
+                                            mac_address_actuator,
+                                        );
                                         let _ret = updates_channel.send(b);
                                         return true;
                                     }

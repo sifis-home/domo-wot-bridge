@@ -50,8 +50,6 @@ pub fn decrypt_atc(
         Err(_e) => return Err("error".into()),
     }
 
-
-
     if res.len() == 3 {
         //println!("Res {} Res0 {} res1 {} res2 {} ", res.len(), res[0], res[1], res[2]);
 
@@ -84,12 +82,10 @@ pub fn decrypt_atc(
 
         //println!("temp {} humi {} ", temp, humi);
 
-
         let temp: f32 = temp as f32 / 100.0;
         let humi: f32 = humi as f32 / 100.0;
 
         //println!("temp {} humi {} ", temp, humi);
-
 
         let res = AtcResult {
             temperature: temp,
@@ -100,7 +96,6 @@ pub fn decrypt_atc(
         return Ok(res);
     }
 
-
     Err("atc error".into())
 }
 
@@ -109,7 +104,6 @@ pub fn decrypt_contact(
     key: &Vec<u8>,
     nonce: &Vec<u8>,
 ) -> Result<ContactResult, Box<dyn Error>> {
-
     /*
     println!(
         "payload {}, key {}, nonce {}",
@@ -118,7 +112,6 @@ pub fn decrypt_contact(
         hex::encode(nonce)
     );
      */
-
 
     // 4 bytes di mac len + 12 bytes di nonce
     type Cipher2 = Ccm<aes::Aes128, U4, U12>;
@@ -211,7 +204,6 @@ fn decrypt_aes_ccm(
 }
 
 pub fn parse_atc(mac: &str, data: &str, token: &str) -> Result<AtcResult, Box<dyn Error>> {
-
     println!("{}", data);
     let preamble = "161a18";
     let packet_start = data.find(preamble);

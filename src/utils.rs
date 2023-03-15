@@ -36,13 +36,13 @@ pub struct BestActuatorData {
 
 pub struct ValveCommandManager {
     pub valve_commands: HashMap<String, ValveData>,
-    pub best_actuator: HashMap<String, BestActuatorData>
+    pub best_actuator: HashMap<String, BestActuatorData>,
 }
 
 impl ValveCommandManager {
     pub fn new() -> Self {
         ValveCommandManager {
-            best_actuator: HashMap:: new(),
+            best_actuator: HashMap::new(),
             valve_commands: HashMap::new(),
         }
     }
@@ -56,26 +56,51 @@ impl ValveCommandManager {
             .insert(valve_mac_address.to_owned(), valve_data);
     }
 
-    pub fn update_best_actuator(&mut self, valve_mac_address: &str, actuator_mac_address: &str, rssi: i64) {
+    pub fn update_best_actuator(
+        &mut self,
+        valve_mac_address: &str,
+        actuator_mac_address: &str,
+        rssi: i64,
+    ) {
         let now = SystemTime::now();
         if self.best_actuator.contains_key(valve_mac_address) {
             let data = self.best_actuator.get(valve_mac_address).unwrap();
             if data.rssi < rssi || (data.timestamp.elapsed().unwrap().as_secs() > 30) {
-                self.best_actuator.insert(valve_mac_address.to_string(), BestActuatorData { actuator_mac_address: actuator_mac_address.to_string(), rssi, timestamp: now });
-                println!("BEST ACT FOR {} is {} ", valve_mac_address, actuator_mac_address);
+                self.best_actuator.insert(
+                    valve_mac_address.to_string(),
+                    BestActuatorData {
+                        actuator_mac_address: actuator_mac_address.to_string(),
+                        rssi,
+                        timestamp: now,
+                    },
+                );
+                println!(
+                    "BEST ACT FOR {} is {} ",
+                    valve_mac_address, actuator_mac_address
+                );
             }
         } else {
-            self.best_actuator.insert(valve_mac_address.to_string(), BestActuatorData { actuator_mac_address: actuator_mac_address.to_string(), rssi, timestamp: now });
-            println!("BEST ACT FOR {} is {} ", valve_mac_address, actuator_mac_address);
+            self.best_actuator.insert(
+                valve_mac_address.to_string(),
+                BestActuatorData {
+                    actuator_mac_address: actuator_mac_address.to_string(),
+                    rssi,
+                    timestamp: now,
+                },
+            );
+            println!(
+                "BEST ACT FOR {} is {} ",
+                valve_mac_address, actuator_mac_address
+            );
         }
     }
 
-    pub fn get_best_actuator_for_valve(&self, valve_mac_address: &str) -> Option<String>{
-       if self.best_actuator.contains_key(valve_mac_address) {
-           let act = self.best_actuator.get(valve_mac_address).unwrap();
-           Some(act.actuator_mac_address.clone())
-       } else {
-           None
-       }
+    pub fn get_best_actuator_for_valve(&self, valve_mac_address: &str) -> Option<String> {
+        if self.best_actuator.contains_key(valve_mac_address) {
+            let act = self.best_actuator.get(valve_mac_address).unwrap();
+            Some(act.actuator_mac_address.clone())
+        } else {
+            None
+        }
     }
 }

@@ -462,7 +462,6 @@ async fn get_topic_from_actuator_topic(
     actuator_topic: &serde_json::Value,
     target_topic_name: &str,
 ) -> Result<serde_json::Value, Box<dyn Error>> {
-
     println!("ACTUATOR_TOPIC {}", actuator_topic);
     let mut source_topic = dht_manager
         .cache
@@ -472,9 +471,7 @@ async fn get_topic_from_actuator_topic(
 
     let channel_number_str = channel_number_str.as_str();
 
-
     if source_topic_name == "domo_power_energy_sensor" {
-
         let updated_props = actuator_topic["updated_properties"].as_array().unwrap();
 
         let mut found = false;
@@ -489,12 +486,13 @@ async fn get_topic_from_actuator_topic(
             return Err("not update".into());
         }
 
+        source_topic["value"]["power"] = actuator_topic["power_data"]
+            ["channel".to_owned() + channel_number_str]["active_power"]
+            .clone();
 
-        source_topic["value"]["power"] =
-            actuator_topic["power_data"]["channel".to_owned()+ channel_number_str]["active_power"].clone();
-
-        source_topic["value"]["energy"] =
-            actuator_topic["power_data"]["channel".to_owned()+ channel_number_str]["energy"].clone();
+        source_topic["value"]["energy"] = actuator_topic["power_data"]
+            ["channel".to_owned() + channel_number_str]["energy"]
+            .clone();
 
         let mut props = Vec::new();
 
@@ -503,7 +501,6 @@ async fn get_topic_from_actuator_topic(
 
         source_topic["value"]["updated_properties"] = serde_json::Value::Array(props);
     }
-
 
     if source_topic_name == "domo_light_dimmable" {
         if target_topic_name == "shelly_dimmer" {
@@ -605,7 +602,10 @@ async fn get_topic_from_actuator_topic(
     {
         let updated_props = actuator_topic["updated_properties"].as_array().unwrap();
 
-        println!("UPDATED_PROPS {:?} channel_number_str {}", updated_props, channel_number_str);
+        println!(
+            "UPDATED_PROPS {:?} channel_number_str {}",
+            updated_props, channel_number_str
+        );
 
         let mut found = false;
         for prop in updated_props {
@@ -620,7 +620,6 @@ async fn get_topic_from_actuator_topic(
         if !found {
             return Err("not update".into());
         }
-
     }
 
     if source_topic_name == "domo_window_sensor" || source_topic_name == "domo_door_sensor" {
@@ -659,8 +658,14 @@ async fn update_actuator_connection(
                             let source_topic_uuid = topic["topic_uuid"].as_str().unwrap();
 
                             if topic_uuid == target_topic_uuid && topic_name == target_topic_name {
-                                println!("target_topic_name {} target_topic_uuid {}", target_topic_name, target_topic_uuid);
-                                println!("source_topic_name {} source_topic_uuid {}", source_topic_name, source_topic_uuid);
+                                println!(
+                                    "target_topic_name {} target_topic_uuid {}",
+                                    target_topic_name, target_topic_uuid
+                                );
+                                println!(
+                                    "source_topic_name {} source_topic_uuid {}",
+                                    source_topic_name, source_topic_uuid
+                                );
                                 println!("target_channel_number {}", target_channel_number);
 
                                 if let Ok(status) = get_topic_from_actuator_topic(
@@ -670,7 +675,9 @@ async fn update_actuator_connection(
                                     target_channel_number,
                                     &actuator_topic,
                                     target_topic_name,
-                                ).await {
+                                )
+                                .await
+                                {
                                     dht_manager
                                         .write_topic(source_topic_name, source_topic_uuid, &status)
                                         .await;
@@ -770,7 +777,11 @@ pub fn get_shelly_discovery_result(record: &Record) -> Option<ShellyDiscoveryRes
     }
 }
 
-async fn handle_ble_update_message(message: BleBeaconMessage, dht_manager: &mut DHTManager, valve_command_manager: &mut ValveCommandManager) {
+async fn handle_ble_update_message(
+    message: BleBeaconMessage,
+    dht_manager: &mut DHTManager,
+    valve_command_manager: &mut ValveCommandManager,
+) {
     let ret = dht_manager
         .get_actuator_from_mac_address(&message.mac_address)
         .await;
@@ -799,8 +810,7 @@ async fn handle_ble_update_message(message: BleBeaconMessage, dht_manager: &mut 
                 .await;
             }
 
-            if topic_name == "domo_ble_valve"
-            {
+            if topic_name == "domo_ble_valve" {
                 if message.payload == "0" || message.payload == "1" {
                     handle_ble_valve_update(
                         dht_manager,
@@ -808,11 +818,14 @@ async fn handle_ble_update_message(message: BleBeaconMessage, dht_manager: &mut 
                         &message.payload,
                         &topic,
                     )
-                        .await;
+                    .await;
                 } else {
                     // update best actuator to use for valve depending on rssi
-                    valve_command_manager.
-                        update_best_actuator(&message.mac_address, &message.actuator, message.rssi);
+                    valve_command_manager.update_best_actuator(
+                        &message.mac_address,
+                        &message.actuator,
+                        message.rssi,
+                    );
                 }
             }
         }
@@ -1046,18 +1059,25 @@ async fn calculate_mode(
     ret
 }
 
-
-async fn check_shelly_esp8266_mode(actuator_connections: &Vec<serde_json::Value>, shelly_manager: &mut GlobalShellyManager, dht_manager: &mut DHTManager){
+async fn check_shelly_esp8266_mode(
+    actuator_connections: &Vec<serde_json::Value>,
+    shelly_manager: &mut GlobalShellyManager,
+    dht_manager: &mut DHTManager,
+) {
     let mut idx = 0;
     let mut to_remove = Vec::new();
     for act in &mut shelly_manager.shelly_list {
-        if let Ok(topic_of_act) = dht_manager.get_actuator_from_mac_address(&act.mac_address).await {
+        if let Ok(topic_of_act) = dht_manager
+            .get_actuator_from_mac_address(&act.mac_address)
+            .await
+        {
             if let Some(value) = topic_of_act.get("value") {
                 if let Some(mode) = value.get("mode") {
                     let mode = mode.as_u64().unwrap();
                     let act_topic_name = topic_of_act["topic_name"].as_str().unwrap();
                     let act_topic_uuid = topic_of_act["topic_uuid"].as_str().unwrap();
-                    let desired_mode = calculate_mode(&actuator_connections, act_topic_name, act_topic_uuid).await;
+                    let desired_mode =
+                        calculate_mode(&actuator_connections, act_topic_name, act_topic_uuid).await;
 
                     let mut inverted = false;
                     if let Some(inv) = value.get("inverted") {
@@ -1065,30 +1085,32 @@ async fn check_shelly_esp8266_mode(actuator_connections: &Vec<serde_json::Value>
                     }
 
                     if mode != desired_mode {
-
-                        println!("Change mode of {} {} to {} ", act_topic_name, act_topic_uuid, desired_mode);
+                        println!(
+                            "Change mode of {} {} to {} ",
+                            act_topic_name, act_topic_uuid, desired_mode
+                        );
                         let action_payload = serde_json::json!({
-                                            "mode": desired_mode,
-                                            "inverted": inverted
-                                        });
+                            "mode": desired_mode,
+                            "inverted": inverted
+                        });
 
                         let action_payload_string = action_payload.to_string();
 
                         let shelly_action = serde_json::json!({
-                                            "shelly_action" : {
-                                                "input" : {
-                                                    "action": {
-                                                        "action_name": "change_mode",
-                                                        "action_payload": action_payload_string
-                                                    }
-                                                }
-                                            }
-                                        });
+                            "shelly_action" : {
+                                "input" : {
+                                    "action": {
+                                        "action_name": "change_mode",
+                                        "action_payload": action_payload_string
+                                    }
+                                }
+                            }
+                        });
 
                         let message = serde_json::json!({
-                                            "messageType": "requestAction",
-                                            "data": shelly_action
-                                        });
+                            "messageType": "requestAction",
+                            "data": shelly_action
+                        });
 
                         act.send_action(&message).await;
                         to_remove.push(idx);
@@ -1102,12 +1124,14 @@ async fn check_shelly_esp8266_mode(actuator_connections: &Vec<serde_json::Value>
     for id in to_remove {
         shelly_manager.shelly_list.remove(id);
     }
-
 }
 
-
-async fn check_shelly_esp32_mode(actuator_connections: &Vec<serde_json::Value>, shelly_plus_list: &Vec<String>, dht_manager: &mut DHTManager, wss_mgr: &mut WssManager){
-
+async fn check_shelly_esp32_mode(
+    actuator_connections: &Vec<serde_json::Value>,
+    shelly_plus_list: &Vec<String>,
+    dht_manager: &mut DHTManager,
+    wss_mgr: &mut WssManager,
+) {
     for act in shelly_plus_list {
         if let Ok(topic_of_act) = dht_manager.get_actuator_from_mac_address(&act).await {
             if let Some(value) = topic_of_act.get("value") {
@@ -1115,7 +1139,8 @@ async fn check_shelly_esp32_mode(actuator_connections: &Vec<serde_json::Value>, 
                     let mode = mode.as_u64().unwrap();
                     let act_topic_name = topic_of_act["topic_name"].as_str().unwrap();
                     let act_topic_uuid = topic_of_act["topic_uuid"].as_str().unwrap();
-                    let desired_mode = calculate_mode(&actuator_connections, act_topic_name, act_topic_uuid).await;
+                    let desired_mode =
+                        calculate_mode(&actuator_connections, act_topic_name, act_topic_uuid).await;
 
                     let mut inverted = false;
                     if let Some(inv) = value.get("inverted") {
@@ -1123,39 +1148,39 @@ async fn check_shelly_esp32_mode(actuator_connections: &Vec<serde_json::Value>, 
                     }
 
                     if mode != desired_mode {
-
-                        println!("Change mode of {} {} to {} ", act_topic_name, act_topic_uuid, desired_mode);
+                        println!(
+                            "Change mode of {} {} to {} ",
+                            act_topic_name, act_topic_uuid, desired_mode
+                        );
                         let action_payload = serde_json::json!({
-                                            "mode": desired_mode,
-                                            "inverted": inverted
-                                        });
+                            "mode": desired_mode,
+                            "inverted": inverted
+                        });
 
                         let action_payload_string = action_payload.to_string();
 
                         let shelly_action = serde_json::json!({
-                                            "shelly_action" : {
-                                                "input" : {
-                                                    "action": {
-                                                        "action_name": "change_mode",
-                                                        "action_payload": action_payload_string
-                                                    }
-                                                }
-                                            }
-                                        });
+                            "shelly_action" : {
+                                "input" : {
+                                    "action": {
+                                        "action_name": "change_mode",
+                                        "action_payload": action_payload_string
+                                    }
+                                }
+                            }
+                        });
 
                         let cmd = ESP32CommandMessage {
                             command_type: ESP32CommandType::ActuatorCommand,
                             mac_address: act.to_owned(),
                             payload: shelly_action.clone(),
-                            actuator_mac_address: String::from("")
+                            actuator_mac_address: String::from(""),
                         };
 
                         let _ret = wss_mgr.command_channel_tx.send(cmd);
-
                     }
                 }
             }
         }
     }
-
 }
