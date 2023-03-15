@@ -1,0 +1,49 @@
+name: cross
+
+on:
+  push:
+    branches: [ "master", "cicd" ]
+    tags:
+      - 'v*.*.*'
+
+jobs:
+
+  cross-compile:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Rust stable
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+    - name: Install Cross
+      run: |
+        wget https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-x86_64-unknown-linux-gnu.tar.gz
+        tar -xvf cross-x86_64-unknown-linux-gnu.tar.gz
+        mv cross cross-util $HOME/.cargo/bin/
+        rm cross-x86_64-unknown-linux-gnu.tar.gz
+    - name: Launch cross-compile.sh script
+      run: |
+        ./cross-compile.sh
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Build and push x86
+      uses: docker/build-push-action@v4
+      with:
+        push: true
+        tags: sifishome/sifis-domo-wot-bridge-amd64:latest
+        context: target/x86_64-unknown-linux-musl/release
+        file: docker/Dockerfile-amd64
+    - name: Build and push OpenWrt
+      uses: docker/build-push-action@v4
+      with:
+        push: true
+        tags: sifishome/sifis-domo-wot-bridge-arm64v8:latest
+        context: target/aarch64-unknown-linux-musl/release
+        file: docker/Dockerfile-OpenWrt
