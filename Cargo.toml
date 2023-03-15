@@ -5,7 +5,7 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-vendored = ["reqwest/native-tls-vendored", "tokio-tungstenite/native-tls-vendored"]
+vendored = ["sifis-dht/vendored"]
 
 [dependencies]
 axum = { version = "0.5.6", features = ["ws"] }
@@ -18,7 +18,6 @@ tokio-tungstenite = { version = "0.17.1", features = ["native-tls"] }
 url = "2.2.2"
 futures = "0.3.24"
 futures-util = "0.3.24"
-reqwest = {version = "0.11.10", features = ["json"] }
 mdns = "3.0.0"
 base64 = "0.13.0"
 native-tls = "0.2.10"
@@ -28,4 +27,12 @@ aead = {version = "0.5.1", features=["alloc"] }
 aes = "0.8.1"
 hex-literal = "0.3.4"
 hex = "0.4.3"
+env_logger = "0.9.3"
+sifis-dht = { git = "https://github.com/sifis-home/libp2p-rust-dht" }
+rsa = "0.6"
+pem-rfc7468 = "0.3"
+rand = "0.8"
+log = "0.4.17"
 
+[target.'cfg(unix)'.dependencies]
+nix = "0.24.1"

@@ -4,7 +4,7 @@ use std::error::Error;
 use std::time::Duration;
 
 pub struct GlobalShellyManager {
-    shelly_list: Vec<ShellyManager>,
+    pub shelly_list: Vec<ShellyManager>,
 }
 
 impl GlobalShellyManager {
@@ -38,7 +38,8 @@ impl GlobalShellyManager {
         )
         .await;
 
-        if let Ok(shelly) = shelly_m {
+        if let Ok(mut shelly) = shelly_m {
+            shelly.send_get_update().await;
             self.shelly_list.push(shelly);
         }
     }
@@ -57,6 +58,7 @@ impl GlobalShellyManager {
         for shelly in self.shelly_list.iter_mut() {
             if shelly.mac_address == mac_address {
                 shelly.send_action(action_payload).await;
+                println!("DOMO: SHELLY_ACTION_SENT");
             }
         }
 
@@ -69,12 +71,13 @@ impl GlobalShellyManager {
     }
 
     pub async fn wait_for_shelly_message(&mut self) -> Result<serde_json::Value, Box<dyn Error>> {
-        let mut futures = FuturesUnordered::new();
+        let mut mac_address: String = String::from("");
 
         if self.shelly_list.is_empty() {
             let ret = self.sleep_long().await;
             return ret;
         } else {
+            let mut futures = FuturesUnordered::new();
             for shelly in self.shelly_list.iter_mut() {
                 futures.push(shelly.wait_for_shelly_message());
             }
@@ -82,7 +85,32 @@ impl GlobalShellyManager {
             let res = futures.next().await;
 
             if let Some(res) = res {
-                return res;
+                match res {
+                    Ok(r) => {
+                        return Ok(r);
+                    }
+                    Err(e) => {
+                        let s = e.to_string();
+                        if s.contains(":") {
+                            mac_address = e.to_string();
+                        }
+                    }
+                }
+            }
+        }
+
+        if mac_address != "" {
+            let mut idx = 0;
+            let mut to_remove: i32 = -1;
+            for shelly in self.shelly_list.iter_mut() {
+                if shelly.mac_address == mac_address {
+                    to_remove = idx;
+                    break;
+                }
+                idx = idx + 1;
+            }
+            if to_remove != -1 {
+                self.shelly_list.remove(to_remove as usize);
             }
         }
 
@@ -90,7 +118,7 @@ impl GlobalShellyManager {
     }
 
     pub async fn check_if_reconnect_needed(&mut self) {
-        let mut idx = 0_usize;
+        let mut idx = 0 as usize;
 
         while idx < self.shelly_list.len() {
             if self.shelly_list[idx]
@@ -98,7 +126,7 @@ impl GlobalShellyManager {
                 .elapsed()
                 .unwrap()
                 .as_secs()
-                > 6
+                > 30
             {
                 println!("Reconnect to shelly globalshellymanager.rs");
                 let ret = self.shelly_list[idx].reconnect().await;
@@ -111,7 +139,7 @@ impl GlobalShellyManager {
                 }
             }
 
-            idx += 1;
+            idx = idx + 1;
         }
     }
 }

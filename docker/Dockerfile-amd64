@@ -1,0 +1,3 @@
+FROM amd64/alpine
+ADD domo-wot-bridge /
+ENTRYPOINT ["/domo-wot-bridge"]
