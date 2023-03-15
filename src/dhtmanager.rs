@@ -123,7 +123,7 @@ impl DHTManager {
             }
         }
 
-        return Err("err".into());
+        Err("err".into())
     }
 
     pub async fn write_topic(
@@ -156,23 +156,23 @@ impl DHTManager {
                 }
 
                 if command_type == "turn_command" {
-                    return command_parser::handle_turn_command(&self, command).await;
+                    return command_parser::handle_turn_command(self, command).await;
                 }
 
                 if command_type == "valve_command" {
-                    return command_parser::handle_valve_command(&self, command).await;
+                    return command_parser::handle_valve_command(self, command).await;
                 }
 
                 if command_type == "dim_command" {
-                    return command_parser::handle_dim_command(&self, command).await;
+                    return command_parser::handle_dim_command(self, command).await;
                 }
 
                 if command_type == "rgbw_command" {
-                    return command_parser::handle_rgbw_command(&self, command).await;
+                    return command_parser::handle_rgbw_command(self, command).await;
                 }
 
                 if command_type == "shutter_command" {
-                    return command_parser::handle_shutter_command(&self, command).await;
+                    return command_parser::handle_shutter_command(self, command).await;
                 }
             }
         }

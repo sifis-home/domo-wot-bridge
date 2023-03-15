@@ -13,9 +13,9 @@ pub struct AuthCredMessage {
 
 #[derive(Debug, Clone, Serialize)]
 pub enum ESP32CommandType {
-    ActuatorCommand,
-    ValveCommand,
-    PingCommand,
+    Actuator,
+    Valve,
+    Ping,
 }
 #[derive(Debug, Clone, Serialize)]
 pub struct ESP32CommandMessage {
@@ -35,13 +35,12 @@ pub struct BleBeaconMessage {
 
 impl BleBeaconMessage {
     pub fn from(socket_string: &str, actuator: &str) -> Self {
-        let split = socket_string.split(" ");
-        let mut count = 0;
+        let split = socket_string.split(' ');
         let mut mac_address = String::from("");
         let mut payload = String::from("");
         let mut rssi: i64 = 0;
 
-        for part in split {
+        for (count, part) in split.enumerate() {
             if count == 0 {
                 mac_address = part.to_string();
             }
@@ -52,8 +51,6 @@ impl BleBeaconMessage {
             if count == 2 {
                 rssi = part.parse::<i64>().unwrap();
             }
-
-            count = count + 1;
         }
 
         let act_address_with_points = actuator[0..2].to_owned()
@@ -69,7 +66,7 @@ impl BleBeaconMessage {
             + &actuator[10..12];
 
         BleBeaconMessage {
-            actuator: act_address_with_points.to_owned(),
+            actuator: act_address_with_points,
             mac_address,
             payload,
             rssi,

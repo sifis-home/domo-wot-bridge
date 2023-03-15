@@ -25,40 +25,39 @@ pub struct ContactResult {
 
 pub fn decrypt_atc(
     payload: &Vec<u8>,
-    key: &Vec<u8>,
-    nonce: &Vec<u8>,
+    key: &[u8],
+    nonce: &[u8],
 ) -> Result<AtcResult, Box<dyn Error>> {
     // 4 bytes di mac len + 11 bytes di nonce
     type Cipher = Ccm<aes::Aes128, U4, U11>;
-    let key = GenericArray::from_slice(&key);
-    let nonce = GenericArray::from_slice(&nonce);
+    let key = GenericArray::from_slice(key);
+    let nonce = GenericArray::from_slice(nonce);
     let c = Cipher::new(key);
 
     let aad = hex!("11");
 
-    let res;
     let res_r = c.decrypt(
         nonce,
         Payload {
             aad: &aad,
-            msg: &payload,
+            msg: payload,
         },
     );
 
-    match res_r {
-        Ok(r) => res = r,
+    let res = match res_r {
+        Ok(r) => r,
         Err(_e) => return Err("error".into()),
-    }
+    };
 
     if res.len() == 3 {
         //println!("Res {} Res0 {} res1 {} res2 {} ", res.len(), res[0], res[1], res[2]);
 
         let res0: f32 = res[0] as f32;
         let res1: f32 = res[1] as f32;
-        let res2: u8 = res[2] as u8;
+        let res2: u8 = res[2];
 
-        let temp = res0 / f32::from(2 as u8) - f32::from(40 as u16);
-        let humi = res1 / f32::from(2 as u8);
+        let temp = res0 / f32::from(2_u8) - f32::from(40_u16);
+        let humi = res1 / f32::from(2_u8);
         let batt = res2 & 0x7F;
 
         //println!("Temp {} ", temp);
@@ -78,7 +77,7 @@ pub fn decrypt_atc(
 
         let temp: u32 = res[1] as u32 * 256 + res[0] as u32;
         let humi: u32 = res[3] as u32 * 256 + res[2] as u32;
-        let batt: u8 = res[4] as u8;
+        let batt: u8 = res[4];
 
         //println!("temp {} humi {} ", temp, humi);
 
@@ -101,8 +100,8 @@ pub fn decrypt_atc(
 
 pub fn decrypt_contact(
     payload: &Vec<u8>,
-    key: &Vec<u8>,
-    nonce: &Vec<u8>,
+    key: &[u8],
+    nonce: &[u8],
 ) -> Result<ContactResult, Box<dyn Error>> {
     /*
     println!(
@@ -115,8 +114,8 @@ pub fn decrypt_contact(
 
     // 4 bytes di mac len + 12 bytes di nonce
     type Cipher2 = Ccm<aes::Aes128, U4, U12>;
-    let key = GenericArray::from_slice(&key);
-    let nonce = GenericArray::from_slice(&nonce);
+    let key = GenericArray::from_slice(key);
+    let nonce = GenericArray::from_slice(nonce);
     let c = Cipher2::new(key);
 
     let aad = hex!("11");
@@ -125,7 +124,7 @@ pub fn decrypt_contact(
         nonce,
         Payload {
             aad: &aad,
-            msg: &payload,
+            msg: payload,
         },
     );
 
@@ -142,14 +141,12 @@ pub fn decrypt_contact(
                     return Ok(ContactResult {
                         state: ContactStatus::Open,
                     });
+                } else if chars[chars.len() - 1] == 49 as char {
+                    return Ok(ContactResult {
+                        state: ContactStatus::Close,
+                    });
                 } else {
-                    if chars[chars.len() - 1] == 49 as char {
-                        return Ok(ContactResult {
-                            state: ContactStatus::Close,
-                        });
-                    } else {
-                        return Err("Bad request".into());
-                    }
+                    return Err("Bad request".into());
                 }
             } else {
                 // 56 is used in case of light intensity change
@@ -183,10 +180,10 @@ fn decrypt_aes_ccm(
         let len: usize = data_decoded[0] as usize + 1;
         let pkt = &data_decoded[0..len];
 
-        let mut nonce = mac_decoded.clone();
+        let mut nonce = mac_decoded;
 
-        for i in 0..5 {
-            nonce.push(pkt[i]);
+        for p in pkt.iter().take(5) {
+            nonce.push(p.to_owned());
         }
 
         let payload = &pkt[5..pkt.len()];
@@ -208,19 +205,16 @@ pub fn parse_atc(mac: &str, data: &str, token: &str) -> Result<AtcResult, Box<dy
     let preamble = "161a18";
     let packet_start = data.find(preamble);
 
-    let pkt_start: usize;
-    match packet_start {
-        Some(start) => {
-            pkt_start = start;
-        }
+    let pkt_start: usize = match packet_start {
+        Some(start) => start,
         _ => {
             return Err("error".into());
         }
-    }
+    };
 
     let offset = pkt_start + preamble.len();
     let stripped_data_str = &data[offset..];
-    let mac_str = mac.replace(":", "");
+    let mac_str = mac.replace(':', "");
 
     /*
     printlnn!(
@@ -254,16 +248,12 @@ pub fn parse_contact_sensor(
     let xiaomi_preamble = "1695fe";
     let packet_start = data.find(xiaomi_preamble);
 
-    let pkt_start: usize;
-    match packet_start {
-        Some(start) => {
-            //printlnn!("start {}", start);
-            pkt_start = start / 2;
-        }
+    let pkt_start: usize = match packet_start {
+        Some(start) => start / 2,
         _ => {
             return Err("error".into());
         }
-    }
+    };
 
     let data = hex::decode(data).expect("Decoding failed");
     let key = hex::decode(key).expect("Decoding failed");
@@ -272,7 +262,7 @@ pub fn parse_contact_sensor(
 
     //printlnn!("packet_start {}", packet_start);
 
-    let mac_str = mac.replace(":", "");
+    let mac_str = mac.replace(':', "");
 
     let mut mac_str_inverted: String = String::from("");
 
@@ -318,7 +308,7 @@ pub fn parse_contact_sensor(
 
     //printlnn!("Cypher Payload {}", hex::encode(cypher_payload));
 
-    let mut total: Vec<u8> = cypher_payload.to_vec().clone();
+    let mut total: Vec<u8> = cypher_payload.to_vec();
 
     //printlnn!("To decrypt {}", hex::encode(&total));
 
@@ -340,6 +330,6 @@ mod tests {
         let key = "6b1db353566f01c6d3585100b9d348f4";
         let data = "1d020106191695fe58588b09482b9e53ecaae46db81e190d00007d32b33ccb";
 
-        let ret = parse_contact_sensor(&mac, &data, &key);
+        let _ret = parse_contact_sensor(mac, data, key);
     }
 }

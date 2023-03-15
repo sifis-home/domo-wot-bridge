@@ -91,7 +91,7 @@ impl GlobalShellyManager {
                     }
                     Err(e) => {
                         let s = e.to_string();
-                        if s.contains(":") {
+                        if s.contains(':') {
                             mac_address = e.to_string();
                         }
                     }
@@ -99,15 +99,13 @@ impl GlobalShellyManager {
             }
         }
 
-        if mac_address != "" {
-            let mut idx = 0;
+        if !mac_address.is_empty() {
             let mut to_remove: i32 = -1;
-            for shelly in self.shelly_list.iter_mut() {
+            for (idx, shelly) in self.shelly_list.iter_mut().enumerate() {
                 if shelly.mac_address == mac_address {
-                    to_remove = idx;
+                    to_remove = idx as i32;
                     break;
                 }
-                idx = idx + 1;
             }
             if to_remove != -1 {
                 self.shelly_list.remove(to_remove as usize);
@@ -118,7 +116,7 @@ impl GlobalShellyManager {
     }
 
     pub async fn check_if_reconnect_needed(&mut self) {
-        let mut idx = 0 as usize;
+        let mut idx = 0_usize;
 
         while idx < self.shelly_list.len() {
             if self.shelly_list[idx]
@@ -139,7 +137,7 @@ impl GlobalShellyManager {
                 }
             }
 
-            idx = idx + 1;
+            idx += 1;
         }
     }
 }

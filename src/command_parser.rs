@@ -30,9 +30,9 @@ pub async fn handle_turn_command(
             .cache
             .get_topic_uuid("domo_actuator_connection", topic_uuid)?;
 
-        println!("Connection {}", dht_connection_topic.to_string());
+        println!("Connection {}", dht_connection_topic);
 
-        if let None = dht_connection_topic.get("value") {
+        if dht_connection_topic.get("value").is_none() {
             return Err("no connection".into());
         }
 
@@ -92,7 +92,7 @@ pub async fn handle_turn_command(
                             });
 
                             println!("DOMO: RETURN ACTUATOR COMMAND");
-                            return Ok(DHTCommand::ActuatorCommand(value.to_owned()));
+                            return Ok(DHTCommand::ActuatorCommand(value));
                         }
                     }
                 }
@@ -161,7 +161,7 @@ pub async fn handle_shutter_command(
                                 }
                             });
 
-                            return Ok(DHTCommand::ActuatorCommand(value.to_owned()));
+                            return Ok(DHTCommand::ActuatorCommand(value));
                         }
                     }
                 }
@@ -215,7 +215,7 @@ pub async fn handle_dim_command(
                                       },
                                     }
                                 });
-                                return Ok(DHTCommand::ActuatorCommand(value.to_owned()));
+                                return Ok(DHTCommand::ActuatorCommand(value));
                             }
 
                             if target_topic_name == "shelly_rgbw" {
@@ -255,7 +255,7 @@ pub async fn handle_dim_command(
                                       },
                                     }
                                 });
-                                return Ok(DHTCommand::ActuatorCommand(value.to_owned()));
+                                return Ok(DHTCommand::ActuatorCommand(value));
                             }
                         }
                     }
@@ -315,7 +315,7 @@ pub async fn handle_rgbw_command(
                                 }
                             });
 
-                            return Ok(DHTCommand::ActuatorCommand(value.to_owned()));
+                            return Ok(DHTCommand::ActuatorCommand(value));
                         }
                     }
                 }
@@ -358,7 +358,7 @@ pub async fn handle_valve_command(
                     }
                 });
 
-                return Ok(DHTCommand::ValveCommand(value.to_owned()));
+                return Ok(DHTCommand::ValveCommand(value));
             }
         }
     }
