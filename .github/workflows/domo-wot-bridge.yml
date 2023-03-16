@@ -20,6 +20,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Install protobuf compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install protobuf-compiler  
+
     - name: Install stable
       uses: actions-rs/toolchain@v1
       with:
@@ -50,6 +55,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install protobuf compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install protobuf-compiler  
 
     - name: Install Rust stable
       uses: actions-rs/toolchain@v1
@@ -73,6 +82,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install protobuf compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install protobuf-compiler  
 
     - name: Install Rust stable
       uses: actions-rs/toolchain@v1
@@ -134,6 +147,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Install protobuf compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install protobuf-compiler  
+
     - name: Install rust-code-analysis
       env:
         RCA_LINK: https://github.com/mozilla/rust-code-analysis/releases/download
@@ -162,6 +180,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install protobuf compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install protobuf-compiler  
 
     - name: Install stable
       uses: actions-rs/toolchain@v1
@@ -225,6 +247,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install protobuf compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install protobuf-compiler  
 
     - name: Install stable
       uses: actions-rs/toolchain@v1
