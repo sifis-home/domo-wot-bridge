@@ -251,7 +251,7 @@ impl WssManager {
                                             }
                                         },
                                         ESP32CommandType::Ping => {
-                                            if last_pong_timestamp.elapsed().unwrap().as_secs() > 30{
+                                            if last_pong_timestamp.elapsed().unwrap().as_secs() > 60{
                                                 println!("{} disconnected due to lack of PONGS", esp32_mac_address);
                                                 return;
                                             }

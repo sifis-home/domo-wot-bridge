@@ -478,9 +478,19 @@ async fn get_topic_from_actuator_topic(
             ["channel".to_owned() + channel_number_str]["active_power"]
             .clone();
 
-        source_topic["value"]["energy"] = actuator_topic["power_data"]
-            ["channel".to_owned() + channel_number_str]["energy"]
-            .clone();
+        let old_ene = source_topic["value"]["energy"].as_f64();
+
+        let mut old_value: f64 = 0.0;
+        if let Some(old_ene) = old_ene {
+            old_value = old_ene;
+        }
+
+        let current_ene = actuator_topic["power_data"]
+            ["channel".to_owned() + channel_number_str]["energy"].as_f64().unwrap();
+
+        let total_ene = old_value + current_ene;
+
+        source_topic["value"]["energy"] = serde_json::Value::from(total_ene);
 
         let props = vec![
             serde_json::Value::String("power".to_owned()),
@@ -494,7 +504,19 @@ async fn get_topic_from_actuator_topic(
         if target_topic_name == "shelly_dimmer" {
             source_topic["value"]["status"] = actuator_topic["dimmer_status"].clone();
             source_topic["value"]["power"] = actuator_topic["power1"].clone();
-            source_topic["value"]["energy"] = actuator_topic["energy1"].clone();
+
+            let old_ene = source_topic["value"]["energy"].as_f64();
+
+            let mut old_value: f64 = 0.0;
+            if let Some(old_ene) = old_ene {
+                old_value = old_ene;
+            }
+
+            let current_ene = actuator_topic["energy1"].as_f64().unwrap();
+
+            let total_ene = old_value + current_ene;
+
+            source_topic["value"]["energy"] = serde_json::Value::from(total_ene);
 
             let updated_props = actuator_topic["updated_properties"].as_array().unwrap();
 
@@ -542,10 +564,24 @@ async fn get_topic_from_actuator_topic(
     {
         source_topic["value"]["status"] =
             actuator_topic["output".to_owned() + channel_number_str].clone();
-        source_topic["value"]["power"] =
-            actuator_topic["power".to_owned() + channel_number_str].clone();
-        source_topic["value"]["energy"] =
-            actuator_topic["energy".to_owned() + channel_number_str].clone();
+
+        if target_topic_name != "shelly_1" && target_topic_name != "shelly_1plus" {
+            source_topic["value"]["power"] =
+                actuator_topic["power".to_owned() + channel_number_str].clone();
+
+            let old_ene = source_topic["value"]["energy"].as_f64();
+
+            let mut old_value: f64 = 0.0;
+            if let Some(old_ene) = old_ene {
+                old_value = old_ene;
+            }
+
+            let current_ene = actuator_topic["energy".to_owned() + channel_number_str].as_f64().unwrap();
+
+            let total_ene = old_value + current_ene;
+
+            source_topic["value"]["energy"] = serde_json::Value::from(total_ene);
+        }
 
         let updated_props = actuator_topic["updated_properties"].as_array().unwrap();
 

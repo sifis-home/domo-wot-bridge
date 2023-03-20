@@ -17,7 +17,7 @@ pub struct DHTManager {
 impl DHTManager {
     pub async fn new(shared_key: &str) -> Result<DHTManager, Box<dyn Error>> {
         let storage = sifis_dht::domopersistentstorage::SqliteStorage::new(
-            "/tmp/rustshellymanager.sqlite",
+            "/root/sifis-db.sqlite",
             true,
         );
         let mut pkcs8_der = utils::generate_rsa_key().1;
@@ -25,7 +25,7 @@ impl DHTManager {
             .map_err(|e| format!("Couldn't load key: {e:?}"))?;
 
         let sifis_cache = sifis_dht::domocache::DomoCache::new(
-            true,
+            false,
             storage,
             shared_key.to_owned(),
             local_key,
