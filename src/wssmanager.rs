@@ -22,38 +22,54 @@ fn parse_esp32_message(
             if let Some(data) = shelly_message.get("data") {
                 if let Some(status) = data.get("status") {
                     let status_string = status.as_str().unwrap();
-                    let status_result: serde_json::Value =
-                        serde_json::from_str(status_string).unwrap();
+                    let s_res = serde_json::from_str::<serde_json::Value>(status_string);
 
-                    if let Some(updated_properties) = status_result.get("updated_properties") {
-                        let vec_prop = updated_properties.as_array().unwrap();
-                        let mac_address_actuator =
-                            status_result.get("mac_address").unwrap().as_str().unwrap();
-                        for prop in vec_prop {
-                            let prop_str = prop.as_str().unwrap();
-                            if prop_str == "beacon_adv" {
-                                if let Some(beacon_adv) = status_result.get("beacon_adv") {
-                                    let beacon_adv_string = beacon_adv.as_str().unwrap();
+                    match s_res {
+                        Err(_r) =>{
+                            println!("status_string {} {}", status_string, _r);
+                            // we return true in case of errors so that the message is not forwarded
+                            return true;
+                        },
+                        Ok(status_result) => {
+                            if let Some(updated_properties) = status_result.get("updated_properties") {
+                                let vec_prop = updated_properties.as_array().unwrap();
+                                let mac_address_actuator =
+                                    status_result.get("mac_address").unwrap().as_str().unwrap();
 
-                                    let b = BleBeaconMessage::from(
-                                        beacon_adv_string,
-                                        mac_address_actuator,
-                                    );
-                                    let _ret = updates_channel.send(b);
-                                    return true;
+                                let mut update_act = false;
+
+                                for prop in vec_prop {
+                                    let prop_str = prop.as_str().unwrap();
+
+                                    if prop_str != "beacon_adv" && prop_str != "valve_operation" {
+                                        update_act = true;
+                                    }
+
+                                    if prop_str == "beacon_adv" {
+                                        if let Some(beacon_adv) = status_result.get("beacon_adv") {
+                                            let beacon_adv_string = beacon_adv.as_str().unwrap();
+
+                                            //println!("BEACON_ADV_PARSE from {} {}", mac_address_actuator, beacon_adv_string);
+                                            let b = BleBeaconMessage::from(
+                                                beacon_adv_string,
+                                                mac_address_actuator,
+                                            );
+                                            let _ret = updates_channel.send(b);
+                                        }
+                                    } else if prop_str == "valve_operation" {
+                                        if let Some(valve_operation) = status_result.get("valve_operation")
+                                        {
+                                            let valve_operation_string = valve_operation.as_str().unwrap();
+
+                                            let b = BleBeaconMessage::from(
+                                                valve_operation_string,
+                                                mac_address_actuator,
+                                            );
+                                            let _ret = updates_channel.send(b);
+                                        }
+                                    }
                                 }
-                            } else if prop_str == "valve_operation" {
-                                if let Some(valve_operation) = status_result.get("valve_operation")
-                                {
-                                    let valve_operation_string = valve_operation.as_str().unwrap();
-
-                                    let b = BleBeaconMessage::from(
-                                        valve_operation_string,
-                                        mac_address_actuator,
-                                    );
-                                    let _ret = updates_channel.send(b);
-                                    return true;
-                                }
+                                return !update_act;
                             }
                         }
                     }
@@ -206,7 +222,7 @@ impl WssManager {
                                             "data": shelly_action
                                         });
 
-            println!("Request status update for ESP32");
+            //println!("Request status update for ESP32");
             let m = Message::Text(serde_json::to_string(&message).unwrap());
             let _ret = socket.send(m).await;
 
@@ -220,7 +236,7 @@ impl WssManager {
                                         ESP32CommandType::Valve => {
 
                                                if esp32_mac_address == cmd.actuator_mac_address {
-                                                    println!("Received valve command {} ", esp32_mac_address);
+                                                    //println!("Received valve command {} ", esp32_mac_address);
                                                     if let Some(shelly_action_payload) = cmd.payload.get("shelly_action") {
                                                                 let shelly_action = serde_json::json!({ "shelly_action": shelly_action_payload });
 
@@ -236,7 +252,7 @@ impl WssManager {
 
                                         }
                                         ESP32CommandType::Actuator => {
-                                            println!("Received Actuator command");
+                                            //println!("Received Actuator command");
                                             if cmd.mac_address == esp32_mac_address {
                                                 if let Some(shelly_action_payload) = cmd.payload.get("shelly_action") {
                                                             let shelly_action = serde_json::json!({ "shelly_action": shelly_action_payload });
@@ -252,10 +268,10 @@ impl WssManager {
                                         },
                                         ESP32CommandType::Ping => {
                                             if last_pong_timestamp.elapsed().unwrap().as_secs() > 60{
-                                                println!("{} disconnected due to lack of PONGS", esp32_mac_address);
+                                                //println!("{} disconnected due to lack of PONGS", esp32_mac_address);
                                                 return;
                                             }
-                                            println!("Received Ping command request");
+                                            //println!("Received Ping command request");
                                             let _ret = socket.send(Message::Ping(vec![])).await;
 
                                         }
@@ -266,11 +282,14 @@ impl WssManager {
                         // received message from an esp32
                         Some(msg) = socket.recv() => {
 
+                            //println!("MSG {:?}", msg);
+
                             match msg {
                                 Ok(message) => {
                                     match message {
+
                                         Message::Text(message) => {
-                                            //println!("Received {message}");
+
                                             let shelly_message: serde_json::Value = serde_json::from_str(&message).unwrap();
 
                                             if !parse_esp32_message(&shelly_message, &updates_channel) {
@@ -278,18 +297,18 @@ impl WssManager {
                                             }
                                         },
                                         Message::Close(_) => {
-                                            println!("{} disconnected", esp32_mac_address);
+                                            //println!("{} disconnected", esp32_mac_address);
                                             return;
                                         },
                                         Message::Pong(_) => {
-                                            println!("PONG FROM {}", esp32_mac_address);
+                                            //println!("PONG FROM {}", esp32_mac_address);
                                             last_pong_timestamp = SystemTime::now();
                                         }
                                         _ => {}
                                     }
                                 },
                                 Err(e) => {
-                                println!("ERROR {} {} ", esp32_mac_address, e);
+                                    println!("ERROR {} {} ", esp32_mac_address, e);
                                 }
                             }
                         }

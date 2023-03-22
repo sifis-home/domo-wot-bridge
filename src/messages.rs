@@ -49,8 +49,13 @@ impl BleBeaconMessage {
             }
 
             if count == 2 {
-                rssi = part.parse::<i64>().unwrap();
+                if let Ok(r) = part.parse::<i64>() {
+                    rssi = r;
+                } else {
+                    print!("part is {}", part);
+                }
             }
+
         }
 
         let act_address_with_points = actuator[0..2].to_owned()

@@ -72,7 +72,7 @@ impl ShellyManager {
                         return Ok((write_shelly, read_shelly));
                        } else {
                          connect_attempts_counter += 1;
-                         println!("{:?}", ws_shelly_res);
+                         //println!("{:?}", ws_shelly_res);
                          if connect_attempts_counter == 2 {
                             return Err("connect error".into());
                          }
@@ -82,7 +82,7 @@ impl ShellyManager {
                 }
 
                 _ = tokio::time::sleep(Duration::from_millis(10000)) => {
-                       println!("Connect to shelly timeout");
+                       //println!("Connect to shelly timeout");
                        connect_attempts_counter += 1;
 
                        if connect_attempts_counter == 2 {
@@ -142,11 +142,11 @@ impl ShellyManager {
 
     pub async fn send_ping(&mut self) {
         let _ret = self.write_shelly.send(Message::Ping(vec![])).await;
-        println!("ping message to shelly sent ");
+        //println!("ping message to shelly sent ");
     }
 
     pub async fn send_get_update(&mut self) {
-        println!("Requesting status update");
+        //println!("Requesting status update");
         let action_payload = serde_json::json!({});
 
         let action_payload_string = action_payload.to_string();
@@ -173,17 +173,17 @@ impl ShellyManager {
     pub async fn send_action(&mut self, message: &serde_json::Value) {
         /*if self.last_action_timestamp != SystemTime::UNIX_EPOCH {
             if self.last_action_timestamp.elapsed().unwrap().as_millis() < 300 {
-                printlnn!("Skipping action");
+                //printlnn!("Skipping action");
                 return;
             }
         }*/
 
-        println!("{}", message);
+        //println!("{}", message);
         let _ret = self
             .write_shelly
             .send(Message::Text(message.to_string()))
             .await;
-        println!("action message to shelly sent ");
+        //println!("action message to shelly sent ");
         self.last_action_timestamp = SystemTime::now();
     }
 
@@ -196,7 +196,7 @@ impl ShellyManager {
                     return Ok(message);
                 }
                 Some(Ok(Message::Pong(_t))) => {
-                    println!("Received Pong Message from shelly");
+                    //println!("Received Pong Message from shelly");
                     self.last_pong_timestamp = SystemTime::now();
                 }
                 Some(Ok(Message::Close(_t))) => {

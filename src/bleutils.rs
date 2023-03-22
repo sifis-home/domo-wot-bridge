@@ -50,7 +50,8 @@ pub fn decrypt_atc(
     };
 
     if res.len() == 3 {
-        //println!("Res {} Res0 {} res1 {} res2 {} ", res.len(), res[0], res[1], res[2]);
+        //
+        // println!("Res {} Res0 {} res1 {} res2 {} ", res.len(), res[0], res[1], res[2]);
 
         let res0: f32 = res[0] as f32;
         let res1: f32 = res[1] as f32;
@@ -60,7 +61,7 @@ pub fn decrypt_atc(
         let humi = res1 / f32::from(2_u8);
         let batt = res2 & 0x7F;
 
-        //println!("Temp {} ", temp);
+        ////println!("Temp {} ", temp);
 
         let res = AtcResult {
             temperature: temp,
@@ -72,19 +73,19 @@ pub fn decrypt_atc(
     }
 
     if res.len() == 6 {
-        //println!("{:02X?}", payload);
-        //println!("Res {} Res0 {} res1 {} res2 {} res3 {} res4 {} res5 {}", res.len(), res[0], res[1], res[2], res[3], res[4], res[5]);
+        ////println!("{:02X?}", payload);
+        ////println!("Res {} Res0 {} res1 {} res2 {} res3 {} res4 {} res5 {}", res.len(), res[0], res[1], res[2], res[3], res[4], res[5]);
 
         let temp: u32 = res[1] as u32 * 256 + res[0] as u32;
         let humi: u32 = res[3] as u32 * 256 + res[2] as u32;
         let batt: u8 = res[4];
 
-        //println!("temp {} humi {} ", temp, humi);
+        ////println!("temp {} humi {} ", temp, humi);
 
         let temp: f32 = temp as f32 / 100.0;
         let humi: f32 = humi as f32 / 100.0;
 
-        //println!("temp {} humi {} ", temp, humi);
+        ////println!("temp {} humi {} ", temp, humi);
 
         let res = AtcResult {
             temperature: temp,
@@ -103,14 +104,13 @@ pub fn decrypt_contact(
     key: &[u8],
     nonce: &[u8],
 ) -> Result<ContactResult, Box<dyn Error>> {
-    /*
-    println!(
-        "payload {}, key {}, nonce {}",
-        hex::encode(payload),
-        hex::encode(key),
-        hex::encode(nonce)
-    );
-     */
+    //println!(
+    //    "payload {}, key {}, nonce {}",
+    //    hex::encode(payload),
+    //    hex::encode(key),
+    //    hex::encode(nonce)
+    //);
+
 
     // 4 bytes di mac len + 12 bytes di nonce
     type Cipher2 = Ccm<aes::Aes128, U4, U12>;
@@ -130,7 +130,7 @@ pub fn decrypt_contact(
 
     return match res {
         Ok(r) => {
-            //printlnn!("{:?}", r);
+            //println!("{:?}", r);
             let re = hex::encode(r);
 
             let chars: Vec<_> = re.chars().collect();
@@ -154,7 +154,7 @@ pub fn decrypt_contact(
             }
         }
         Err(_e) => {
-            //printlnn!("{:?}", e);
+            //println!("{:?}", _e);
             Err("Bad request".into())
         }
     };
@@ -188,7 +188,7 @@ fn decrypt_aes_ccm(
 
         let payload = &pkt[5..pkt.len()];
         /*
-        printlnn!(
+        //printlnn!(
             "payload {:?}, key {:?}, nonce {:?}, mac {:?} ",
             payload, token_decoded, nonce, mac_decoded
         );
@@ -201,7 +201,7 @@ fn decrypt_aes_ccm(
 }
 
 pub fn parse_atc(mac: &str, data: &str, token: &str) -> Result<AtcResult, Box<dyn Error>> {
-    println!("{}", data);
+    //println!("{}", data);
     let preamble = "161a18";
     let packet_start = data.find(preamble);
 
@@ -217,7 +217,7 @@ pub fn parse_atc(mac: &str, data: &str, token: &str) -> Result<AtcResult, Box<dy
     let mac_str = mac.replace(':', "");
 
     /*
-    printlnn!(
+    //printlnn!(
         "mac_str {}, stripped_data_str {}",
         mac_str, stripped_data_str
     );
@@ -255,12 +255,13 @@ pub fn parse_contact_sensor(
         }
     };
 
+    println!("DATA TO DECODE: {}", data);
     let data = hex::decode(data).expect("Decoding failed");
     let key = hex::decode(key).expect("Decoding failed");
 
     let packet_start = pkt_start;
 
-    //printlnn!("packet_start {}", packet_start);
+    //println!("packet_start {}", packet_start);
 
     let mac_str = mac.replace(':', "");
 
@@ -276,7 +277,7 @@ pub fn parse_contact_sensor(
 
     let device_type = &data[(packet_start + 5)..(packet_start + 7)];
 
-    //printlnn!("Device Type {}", hex::encode(device_type));
+    //println!("Device Type {}", hex::encode(device_type));
     let mac_inverted = hex::decode(mac_str_inverted).expect("Decoding failed");
 
     let mut nonce: Vec<u8> = vec![];
@@ -289,28 +290,28 @@ pub fn parse_contact_sensor(
 
     let encrypted_payload = &data[(packet_start + 14)..data.len() - 1];
 
-    //printlnn!("Encrypted payload {}", hex::encode(encrypted_payload));
+    //println!("Encrypted payload {}", hex::encode(encrypted_payload));
 
     let token = &encrypted_payload[(encrypted_payload.len() - 4)..encrypted_payload.len()];
 
-    //printlnn!("token {}", hex::encode(token));
+    //println!("token {}", hex::encode(token));
 
     let payload_counter =
         &encrypted_payload[encrypted_payload.len() - 7..encrypted_payload.len() - 4];
 
-    //printlnn!("Payload counter {}", hex::encode(payload_counter));
+    //println!("Payload counter {}", hex::encode(payload_counter));
 
     nonce.extend_from_slice(payload_counter);
 
-    //printlnn!("Nonce {}", hex::encode(&nonce));
+    //println!("Nonce {}", hex::encode(&nonce));
 
     let cypher_payload = &encrypted_payload[0..encrypted_payload.len() - 7];
 
-    //printlnn!("Cypher Payload {}", hex::encode(cypher_payload));
+    //println!("Cypher Payload {}", hex::encode(cypher_payload));
 
     let mut total: Vec<u8> = cypher_payload.to_vec();
 
-    //printlnn!("To decrypt {}", hex::encode(&total));
+    //println!("To decrypt {}", hex::encode(&total));
 
     total.extend_from_slice(token);
 

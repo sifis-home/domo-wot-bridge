@@ -41,6 +41,7 @@ impl GlobalShellyManager {
         if let Ok(mut shelly) = shelly_m {
             shelly.send_get_update().await;
             self.shelly_list.push(shelly);
+            println!("Shelly {} {} connected", shelly_disc_result.topic_name, shelly_disc_result.mac_address);
         }
     }
 
@@ -58,7 +59,7 @@ impl GlobalShellyManager {
         for shelly in self.shelly_list.iter_mut() {
             if shelly.mac_address == mac_address {
                 shelly.send_action(action_payload).await;
-                println!("DOMO: SHELLY_ACTION_SENT");
+                //println!("DOMO: SHELLY_ACTION_SENT");
             }
         }
 
@@ -126,7 +127,7 @@ impl GlobalShellyManager {
                 .as_secs()
                 > 60
             {
-                println!("Reconnect to shelly {} ", self.shelly_list[idx].mac_address);
+                //println!("Reconnect to shelly {} ", self.shelly_list[idx].mac_address);
                 let ret = self.shelly_list[idx].reconnect().await;
                 match ret {
                     Ok(_) => {}

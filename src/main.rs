@@ -15,6 +15,7 @@ use crate::utils::{ValveCommandManager, ValveData};
 use serde_json::{json, Number};
 use std::net::Ipv4Addr;
 
+
 mod bleutils;
 mod command_parser;
 mod dhtmanager;
@@ -84,16 +85,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut counter = 0;
     loop {
-        //println!("Waiting {}", counter);
+        ////println!("Waiting {}", counter);
         counter += 1;
         tokio::select! {
             Some(auth_cred_message) = wss_mgr.rx_auth_cred.recv() => {
-                    println!("Received auth cred from esp32");
+                    //println!("Received auth cred from esp32");
                     let ret = handle_cred_message(auth_cred_message, &mut dht_manager).await;
                     if let Ok(m) = ret {
                         if let Some(mac_address) = m.get("mac_address") {
                             if let Some(topic) = m.get("topic") {
-                                println!("TOPIC {}", topic);
+                                //println!("TOPIC {} mac_address {}", topic, mac_address.to_string());
                                 let topic = topic.as_str().unwrap().to_owned();
                                 if topic == "shelly_1plus" || topic == "shelly_1pm_plus" || topic == "shelly_2pm_plus" {
                                     println!("Shelly plus {}, {} connected" , topic, mac_address);
@@ -104,7 +105,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     }
             },
             esp32_actuator_update = wss_mgr.channel_of_actuator_updates_rx.recv() => {
-                println!("Received esp32 actuator update");
+                //println!("Received esp32 actuator update");
                 if let Ok(msg) = esp32_actuator_update {
                     handle_shelly_message(msg, &mut dht_manager).await;
                 }
@@ -112,7 +113,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             // listener for ble beacons adv
             ble_update = wss_mgr.channel_of_updates_rx.recv() => {
 
-                //println!("Received ble beacon update");
+                ////println!("Received ble beacon update");
 
                 if let Ok(msg) = ble_update {
                     handle_ble_update_message(msg, &mut dht_manager, &mut valve_command_manager).await;
@@ -122,7 +123,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             // mdns await
             res = stream.next() =>  {
 
-                println!("Received mdns message");
+                //println!("Received mdns message");
 
                 if let Some(Ok(response)) = res {
 
@@ -132,7 +133,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
                     if let Some(shelly) = shelly_res {
 
-                        println!("{} {} {}", shelly.topic_name, shelly.mac_address, shelly.ip_address);
+                        //println!("{} {} {}", shelly.topic_name, shelly.mac_address, shelly.ip_address);
 
                         let topic = dht_manager.get_actuator_from_mac_address(&shelly.mac_address).await;
                         match topic {
@@ -164,7 +165,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             },
             _ = check_radiator_valve_commands.wait_ping_timer() => {
-                println!("RADIATOR VALVE QUEUE CHECK");
+                //println!("RADIATOR VALVE QUEUE CHECK");
                 if !valve_command_manager.valve_commands.is_empty() && !shelly_plus_actuators.is_empty() {
 
                     let mut to_remove = vec![];
@@ -181,13 +182,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                             if mac == key {
                                                 if let Some(status) = value.get("status") {
                                                    let status = status.as_bool().unwrap();
-                                                    println!("Status: {} ", status);
-                                                    println!("Desired state: {}", val.desired_state);
+                                                    //println!("Status: {} ", status);
+                                                    //println!("Desired state: {}", val.desired_state);
 
                                                     if let Some(desired_state) = val.desired_state.get("desired_state") {
                                                         let desired_state = desired_state.as_bool().unwrap();
                                                         if status == desired_state {
-                                                            println!("Removing valve command from queue");
+                                                            //println!("Removing valve command from queue");
                                                             to_remove.push(key.clone());
                                                             ok = true;
                                                             break;
@@ -203,7 +204,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         } else if val.attempts < 100 {
 
                             if let Some(next_act_mac) = valve_command_manager.get_best_actuator_for_valve(&key) {
-                                println!("RE-SEND VALVE COMMAND TO {}", next_act_mac.clone());
+                                //println!("RE-SEND VALVE COMMAND TO {}", next_act_mac.clone());
                                 let cmd = ESP32CommandMessage {
                                         command_type: ESP32CommandType::Valve,
                                         mac_address: key.to_string(),
@@ -232,7 +233,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 }
             },
             _ = ping_mgr.wait_ping_timer() => {
-                println!("PING_TIMER {}", counter);
+                //println!("PING_TIMER {}", counter);
 
                 shelly_manager.send_ping().await;
                 shelly_manager.check_if_reconnect_needed().await;
@@ -262,11 +263,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             command = dht_manager.wait_dht_messages() => {
 
                 if let Ok(cmd) = command {
-                        println!("Received command from dht");
+                        //println!("Received command from dht");
                         match cmd {
                             DHTCommand::ActuatorCommand(value) => {
 
-                                println!("Received actuator command");
+                                //println!("Received actuator command");
 
                                 if let Some(mac_address) = value.get("mac_address") {
                                     let mac_string = mac_address.as_str().unwrap();
@@ -288,7 +289,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                 if !shelly_plus_actuators.is_empty() {
                                     if let Some(mac_address) = value.get("mac_address") {
 
-                                        println!("Valve command {}", value);
+                                        //println!("Valve command {}", value);
 
                                         let mac_string = mac_address.as_str().unwrap();
 
@@ -308,11 +309,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                                 actuator_mac_address: best_act.clone()
                                             };
 
-                                            println!("SENDING VALVE COMMAND TO {} ", best_act);
+                                            //println!("SENDING VALVE COMMAND TO {} ", best_act);
 
                                             let _ret = wss_mgr.command_channel_tx.send(cmd);
                                         } else {
-                                            println!("NO ACTUATOR for {} ", mac_string);
+                                            //println!("NO ACTUATOR for {} ", mac_string);
 
                                             let vd = ValveData {
                                                 desired_state: value.clone(),
@@ -331,7 +332,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             },
 
             shelly_message = shelly_manager.wait_for_shelly_message() => {
-                println!("Received shelly message");
+                //println!("Received shelly message");
 
                 if let Ok(message) = shelly_message {
                         handle_shelly_message(message, &mut dht_manager).await;
@@ -371,71 +372,74 @@ async fn handle_shelly_message(shelly_message: serde_json::Value, dht_manager: &
                 if let Some(status) = data.get("status") {
                     let status_string = status.as_str().unwrap();
 
-                    let status_result: serde_json::Value =
-                        serde_json::from_str(status_string).unwrap();
 
-                    let mac_address = status_result.get("mac_address").unwrap().as_str().unwrap();
+                    if let Ok(status_result) = serde_json::from_str::<serde_json::Value>(status_string) {
+                        let mac_address = status_result.get("mac_address").unwrap().as_str().unwrap();
 
-                    let mac_address_with_points = mac_address[0..2].to_owned()
-                        + ":"
-                        + &mac_address[2..4]
-                        + ":"
-                        + &mac_address[4..6]
-                        + ":"
-                        + &mac_address[6..8]
-                        + ":"
-                        + &mac_address[8..10]
-                        + ":"
-                        + &mac_address[10..12];
+                        let mac_address_with_points = mac_address[0..2].to_owned()
+                            + ":"
+                            + &mac_address[2..4]
+                            + ":"
+                            + &mac_address[4..6]
+                            + ":"
+                            + &mac_address[6..8]
+                            + ":"
+                            + &mac_address[8..10]
+                            + ":"
+                            + &mac_address[10..12];
 
-                    let topic_name = status_result.get("topic_name").unwrap().as_str().unwrap();
+                        let topic_name = status_result.get("topic_name").unwrap().as_str().unwrap();
 
-                    if let Ok(topic) = dht_manager.get_topic(topic_name, &mac_address_with_points) {
-                        let mut new_status = status_result.clone();
+                        if let Ok(topic) = dht_manager.get_topic(topic_name, &mac_address_with_points) {
+                            let mut new_status = status_result.clone();
 
-                        if let Some(value) = topic.get("value") {
-                            if let Some(user_login) = value.get("user_login") {
-                                let user_login = user_login.as_str().unwrap();
+                            if let Some(value) = topic.get("value") {
+                                if let Some(user_login) = value.get("user_login") {
+                                    let user_login = user_login.as_str().unwrap();
 
-                                if let Some(user_password) = value.get("user_password") {
-                                    let user_password = user_password.as_str().unwrap();
-                                    if let Some(mac_address) = value.get("mac_address") {
-                                        let mac_address = mac_address.as_str().unwrap();
-                                        if let Some(id) = value.get("id") {
-                                            new_status["user_login"] =
-                                                serde_json::Value::String(user_login.to_owned());
-                                            new_status["user_password"] = serde_json::Value::String(
-                                                user_password.to_string(),
-                                            );
+                                    if let Some(user_password) = value.get("user_password") {
+                                        let user_password = user_password.as_str().unwrap();
+                                        if let Some(mac_address) = value.get("mac_address") {
+                                            let mac_address = mac_address.as_str().unwrap();
+                                            if let Some(id) = value.get("id") {
+                                                new_status["user_login"] =
+                                                    serde_json::Value::String(user_login.to_owned());
+                                                new_status["user_password"] = serde_json::Value::String(
+                                                    user_password.to_string(),
+                                                );
 
-                                            new_status["mac_address"] =
-                                                serde_json::Value::String(mac_address.to_string());
+                                                new_status["mac_address"] =
+                                                    serde_json::Value::String(mac_address.to_string());
 
-                                            new_status["id"] = id.to_owned();
+                                                new_status["id"] = id.to_owned();
 
-                                            new_status["last_update_timestamp"] =
-                                                serde_json::Value::Number(Number::from(
-                                                    utils::get_epoch_ms() as u64,
-                                                ));
+                                                new_status["last_update_timestamp"] =
+                                                    serde_json::Value::Number(Number::from(
+                                                        utils::get_epoch_ms() as u64,
+                                                    ));
 
-                                            let topic_uuid = topic["topic_uuid"].as_str().unwrap();
-                                            dht_manager
-                                                .write_topic(topic_name, topic_uuid, &new_status)
-                                                .await;
+                                                let topic_uuid = topic["topic_uuid"].as_str().unwrap();
+                                                dht_manager
+                                                    .write_topic(topic_name, topic_uuid, &new_status)
+                                                    .await;
 
-                                            let _ret = update_actuator_connection(
-                                                dht_manager,
-                                                topic_name,
-                                                topic_uuid,
-                                                &new_status,
-                                            )
-                                            .await;
+                                                let _ret = update_actuator_connection(
+                                                    dht_manager,
+                                                    topic_name,
+                                                    topic_uuid,
+                                                    &new_status,
+                                                )
+                                                    .await;
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
+
+
+
                 }
             }
         }
@@ -450,7 +454,7 @@ async fn get_topic_from_actuator_topic(
     actuator_topic: &serde_json::Value,
     target_topic_name: &str,
 ) -> Result<serde_json::Value, Box<dyn Error>> {
-    println!("ACTUATOR_TOPIC {}", actuator_topic);
+    //println!("ACTUATOR_TOPIC {}", actuator_topic);
     let mut source_topic = dht_manager
         .cache
         .get_topic_uuid(source_topic_name, source_topic_uuid)?;
@@ -585,22 +589,22 @@ async fn get_topic_from_actuator_topic(
 
         let updated_props = actuator_topic["updated_properties"].as_array().unwrap();
 
-        println!("UPDATED PROPS {:?}", updated_props);
+        //println!("UPDATED PROPS {:?}", updated_props);
 
         let mut props = Vec::new();
 
         for prop in updated_props {
             let prop_str = prop.as_str().unwrap();
 
-            println!("prop_str {}", prop_str);
+            //println!("prop_str {}", prop_str);
 
             if prop_str == ("power".to_owned() + channel_number_str) {
-                println!("pushing power {}", channel_number_str);
+                //println!("pushing power {}", channel_number_str);
                 props.push(serde_json::Value::String("power".to_owned()));
             }
 
             if prop_str == ("energy".to_owned() + channel_number_str) {
-                println!("pushing power {}", channel_number_str);
+                //println!("pushing power {}", channel_number_str);
                 props.push(serde_json::Value::String("energy".to_owned()));
             }
         }
@@ -624,10 +628,10 @@ async fn get_topic_from_actuator_topic(
     {
         let updated_props = actuator_topic["updated_properties"].as_array().unwrap();
 
-        println!(
-            "UPDATED_PROPS {:?} channel_number_str {}",
-            updated_props, channel_number_str
-        );
+        //println!(
+        //    "UPDATED_PROPS {:?} channel_number_str {}",
+        //    updated_props, channel_number_str
+        //);
 
         let mut found = false;
         for prop in updated_props {
@@ -680,15 +684,15 @@ async fn update_actuator_connection(
                             let source_topic_uuid = topic["topic_uuid"].as_str().unwrap();
 
                             if topic_uuid == target_topic_uuid && topic_name == target_topic_name {
-                                println!(
-                                    "target_topic_name {} target_topic_uuid {}",
-                                    target_topic_name, target_topic_uuid
-                                );
-                                println!(
-                                    "source_topic_name {} source_topic_uuid {}",
-                                    source_topic_name, source_topic_uuid
-                                );
-                                println!("target_channel_number {}", target_channel_number);
+                                //println!(
+                                //    "target_topic_name {} target_topic_uuid {}",
+                                //    target_topic_name, target_topic_uuid
+                                //);
+                                //println!(
+                                //    "source_topic_name {} source_topic_uuid {}",
+                                //    source_topic_name, source_topic_uuid
+                                //);
+                                //println!("target_channel_number {}", target_channel_number);
 
                                 if let Ok(status) = get_topic_from_actuator_topic(
                                     dht_manager,
@@ -731,7 +735,7 @@ async fn handle_shelly_command(
 
             let mac_address_str = mac_address.as_str().unwrap();
 
-            println!("DOMO: SENDING ACTION");
+            //println!("DOMO: SENDING ACTION");
 
             let _ret = shelly_manager.send_action(mac_address_str, &message).await;
         }
@@ -807,28 +811,47 @@ async fn handle_ble_update_message(
     let ret = dht_manager
         .get_actuator_from_mac_address(&message.mac_address)
         .await;
+
     if let Ok(topic) = ret {
         let topic_name = topic["topic_name"].as_str().unwrap();
 
         if topic_name == "domo_ble_thermometer" {
-            handle_ble_thermometer_update(
-                dht_manager,
-                &message.mac_address,
-                &message.payload,
-                &topic,
-            )
-            .await;
+
+            //println!("THERMO UPDATE {}", message.payload);
+
+            if let Ok(bytes) = base64::decode(&message.payload) {
+                use hex::ToHex;
+                let beacon_adv_string = bytes.encode_hex::<String>();
+                //println!("BEACON THERMO ADV from {}: {}", message.mac_address, beacon_adv_string);
+
+
+                handle_ble_thermometer_update(
+                    dht_manager,
+                    &message.mac_address,
+                    &beacon_adv_string,
+                    &topic,
+                )
+                    .await;
+            }
         }
 
         if topic_name == "domo_ble_contact" {
-            handle_ble_contact_update(
-                dht_manager,
-                &message.mac_address,
-                &message.payload,
-                &message.rssi,
-                &topic,
-            )
-            .await;
+            //println!("CONTACT UPDATE {}", message.payload);
+
+            if let Ok(bytes) = base64::decode(&message.payload) {
+                use hex::ToHex;
+                let beacon_adv_string = bytes.encode_hex::<String>();
+                //println!("BEACON CONTACT ADV from {}: {}", message.mac_address, beacon_adv_string);
+
+                handle_ble_contact_update(
+                    dht_manager,
+                    &message.mac_address,
+                    &beacon_adv_string,
+                    &message.rssi,
+                    &topic,
+                )
+                    .await;
+            }
         }
 
         if topic_name == "domo_ble_valve" {
@@ -867,8 +890,9 @@ async fn handle_ble_thermometer_update(
 
     let ret = bleutils::parse_atc(mac_address, message, token);
 
+
     if let Ok(m) = ret {
-        println!("DECRITTATO {} {} {}", m.temperature, m.humidity, m.battery);
+        //println!("DECRITTATO {} {} {}", m.temperature, m.humidity, m.battery);
         let value = serde_json::json!({
             "temperature": m.temperature,
             "humidity": m.humidity,
@@ -909,14 +933,17 @@ async fn handle_ble_contact_update(
 
         let data = len_hex_value.to_owned() + message + rssi_hex;
 
+
+        //println!("mac {} token {} payload {}", mac_address, token, message);
+
         let ret = bleutils::parse_contact_sensor(mac_address, &data, token);
         if let Ok(m) = ret {
             let val = u64::from(m.state != ContactStatus::Open);
-            println!("Value_of_topic {}", value_of_topic);
+            //println!("Value_of_topic {}", value_of_topic);
             if let Some(val_in_topic) = value_of_topic.get("status") {
-                println!("{}", val_in_topic);
+                //println!("{}", val_in_topic);
                 let val_in_topic = val_in_topic.as_u64().unwrap();
-                println!("val {}, value_of_topic {}", val, val_in_topic);
+                //println!("val {}, value_of_topic {}", val, val_in_topic);
                 if val != val_in_topic {
                     let value = serde_json::json!({
                     "status": val,
@@ -1086,10 +1113,11 @@ async fn check_shelly_esp8266_mode(
                     }
 
                     if mode != desired_mode {
-                        println!(
-                            "Change mode of {} {} to {} ",
-                            act_topic_name, act_topic_uuid, desired_mode
-                        );
+                        //println!(
+                        //    "Change mode of {} {} to {} ",
+                        //    act_topic_name, act_topic_uuid, desired_mode
+                        //);
+
                         let action_payload = serde_json::json!({
                             "mode": desired_mode,
                             "inverted": inverted
@@ -1148,10 +1176,10 @@ async fn check_shelly_esp32_mode(
                     }
 
                     if mode != desired_mode {
-                        println!(
-                            "Change mode of {} {} to {} ",
-                            act_topic_name, act_topic_uuid, desired_mode
-                        );
+                        //println!(
+                        //    "Change mode of {} {} to {} ",
+                        //    act_topic_name, act_topic_uuid, desired_mode
+                        //);
                         let action_payload = serde_json::json!({
                             "mode": desired_mode,
                             "inverted": inverted

@@ -184,7 +184,7 @@ impl DHTManager {
         let data = self.cache.cache_event_loop().await?;
 
         if let DomoEvent::VolatileData(m) = data {
-            println!("RECEIVED COMMAND{}", m);
+            //println!("RECEIVED COMMAND{}", m);
             return self.handle_volatile_command(m.to_owned()).await;
         }
 

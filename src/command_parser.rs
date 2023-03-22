@@ -5,7 +5,7 @@ pub async fn handle_turn_command(
     dht_manager: &DHTManager,
     command: &serde_json::Value,
 ) -> Result<DHTCommand, Box<dyn Error>> {
-    println!("DOMO: handle_turn_command");
+    //println!("DOMO: handle_turn_command");
     if let Some(value) = command.get("value") {
         let mut topic_uuid = "";
         let mut desired_state = false;
@@ -30,7 +30,7 @@ pub async fn handle_turn_command(
             .cache
             .get_topic_uuid("domo_actuator_connection", topic_uuid)?;
 
-        println!("Connection {}", dht_connection_topic);
+        //println!("Connection {}", dht_connection_topic);
 
         if dht_connection_topic.get("value").is_none() {
             return Err("no connection".into());
@@ -63,10 +63,10 @@ pub async fn handle_turn_command(
                         return Err("err_target_channel_number".into());
                     }
 
-                    println!(
-                        "DOMO: handle_turn_command got actuator connection fields {} {}",
-                        target_topic_name, target_topic_uuid
-                    );
+                    //println!(
+                    //    "DOMO: handle_turn_command got actuator connection fields {} {}",
+                    //    target_topic_name, target_topic_uuid
+                    //);
 
                     let actuator_topic = dht_manager
                         .cache
@@ -91,7 +91,7 @@ pub async fn handle_turn_command(
                                 }
                             });
 
-                            println!("DOMO: RETURN ACTUATOR COMMAND");
+                            //println!("DOMO: RETURN ACTUATOR COMMAND");
                             return Ok(DHTCommand::ActuatorCommand(value));
                         }
                     }
@@ -100,7 +100,7 @@ pub async fn handle_turn_command(
         }
     }
 
-    println!("DOMO: SKIPPING COMMAND");
+    //println!("DOMO: SKIPPING COMMAND");
     Err("not_able_to_parse_command".into())
 }
 
