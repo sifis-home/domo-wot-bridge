@@ -918,6 +918,7 @@ async fn handle_ble_contact_update(
     topic: &serde_json::Value,
 ) {
     if message.len() >= 58 {
+        println!("MESSAGE: {}", message);
         let topic_uuid = topic["topic_uuid"].as_str().unwrap();
         let value_of_topic = &topic["value"];
         let token = value_of_topic["token"].as_str().unwrap();
@@ -927,7 +928,7 @@ async fn handle_ble_contact_update(
 
         let len_hex_value = "1d";
         let rssi_i = *rssi as i8;
-        let rssi_hex = format!("{:x}", rssi_i);
+        let rssi_hex = format!("{:02x}", rssi_i);
 
         let rssi_hex = rssi_hex.as_str();
 

@@ -49,7 +49,7 @@ fn parse_esp32_message(
                                         if let Some(beacon_adv) = status_result.get("beacon_adv") {
                                             let beacon_adv_string = beacon_adv.as_str().unwrap();
 
-                                            //println!("BEACON_ADV_PARSE from {} {}", mac_address_actuator, beacon_adv_string);
+                                            println!("BEACON_ADV_PARSE from {} {}", mac_address_actuator, beacon_adv_string);
                                             let b = BleBeaconMessage::from(
                                                 beacon_adv_string,
                                                 mac_address_actuator,
