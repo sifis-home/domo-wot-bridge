@@ -3,18 +3,18 @@ use crate::globalshellymanager::GlobalShellyManager;
 use crate::shellymanager::ShellyManager;
 use mdns::{Record, RecordKind};
 use std::error::Error;
+use std::fs;
 use std::time::Duration;
 use tokio::time::Interval;
-
 use crate::bleutils::ContactStatus;
 use crate::messages::{AuthCredMessage, BleBeaconMessage, ESP32CommandMessage, ESP32CommandType};
 use crate::wssmanager::WssManager;
 use futures_util::{pin_mut, stream::StreamExt};
-
 use crate::utils::{ValveCommandManager, ValveData};
 use serde_json::{json, Number};
 use std::net::Ipv4Addr;
-
+use serde::{Deserialize, Serialize};
+use clap::Parser;
 
 mod bleutils;
 mod command_parser;
@@ -26,6 +26,29 @@ mod utils;
 mod wssmanager;
 
 const SERVICE_NAME: &str = "_webthing._tcp.local";
+
+#[derive(Parser, Debug, Serialize, Deserialize)]
+struct Config {
+    /// Path to a sqlite file
+    #[clap(parse(try_from_str))]
+    sqlite_file: String,
+    /// 32 bytes long shared key in hex format
+    #[clap(parse(try_from_str))]
+    shared_key: String,
+    #[clap(parse(try_from_str))]
+    node_id: u8,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            sqlite_file: String::from("/tmp/dht_db.sqlite"),
+            shared_key: String::from("test_shared_key"),
+            node_id: 1
+        }
+    }
+}
+
 
 pub struct ShellyDiscoveryResult {
     pub ip_address: String,
@@ -53,6 +76,31 @@ impl PingManager {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+
+    let mut config: Config = Default::default();
+
+    let mut configured = false;
+
+    if let Ok(toml_config_file_content) = fs::read_to_string("Config.toml") {
+       if let Ok(toml) = toml::from_str(&toml_config_file_content) {
+           config = toml;
+           configured = true;
+       }
+    }
+
+    if !configured {
+      config = Config::parse();
+    }
+
+    let Config {
+            sqlite_file,
+            shared_key,
+            node_id
+    } = config;
+
+
+    println!("Parameters: sqlite_file {} shared_key {} node_id {}", sqlite_file, shared_key, node_id);
+
     env_logger::init();
 
     let mut ping_mgr = PingManager::new(10);
@@ -67,8 +115,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut shelly_manager = GlobalShellyManager::new().await;
 
+
     let mut dht_manager = dhtmanager::DHTManager::new(
-        "812d9bcc6e31e990d4ee888af0dba1c11c56be4959606c8a913a3db5d93c7a2c",
+        &shared_key, &sqlite_file
     )
     .await?;
 
@@ -77,7 +126,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let stream = mdns::discover::interface(
         SERVICE_NAME,
         Duration::from_secs(5),
-        Ipv4Addr::new(10, 0, 1, 1),
+        Ipv4Addr::new(10, 0, node_id, 1),
     )?
     .listen();
 
@@ -85,7 +134,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut counter = 0;
     loop {
-        ////println!("Waiting {}", counter);
         counter += 1;
         tokio::select! {
             Some(auth_cred_message) = wss_mgr.rx_auth_cred.recv() => {

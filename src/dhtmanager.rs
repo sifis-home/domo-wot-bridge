@@ -15,10 +15,10 @@ pub struct DHTManager {
 }
 
 impl DHTManager {
-    pub async fn new(shared_key: &str) -> Result<DHTManager, Box<dyn Error>> {
+    pub async fn new(shared_key: &str, db_path: &str) -> Result<DHTManager, Box<dyn Error>> {
         let storage = sifis_dht::domopersistentstorage::SqliteStorage::new(
-            "/root/sifis-db.sqlite",
-            true,
+            db_path,
+            false
         );
         let mut pkcs8_der = utils::generate_rsa_key().1;
         let local_key = Keypair::rsa_from_pkcs8(&mut pkcs8_der)
