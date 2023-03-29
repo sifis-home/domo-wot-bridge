@@ -82,14 +82,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut configured = false;
 
     if let Ok(toml_config_file_content) = fs::read_to_string("Config.toml") {
-       if let Ok(toml) = toml::from_str(&toml_config_file_content) {
-           config = toml;
-           configured = true;
-       }
+
+        let cfg = toml_config_file_content.parse::<toml::Table>();
+
+        match cfg {
+            Ok(cfg) => {
+                println!("cfg {:?}", cfg);
+                if let Some(domo_wot_bridge_config) = cfg.get("domo_wot_bridge") {
+                    if let Ok(c)  = domo_wot_bridge_config.clone().try_into::<Config>() {
+                        config = c;
+                        configured = true;
+                    }
+                }
+            },
+            _ => {}
+        }
+
     }
 
     if !configured {
-      config = Config::parse();
+        config = Config::parse();
     }
 
     let Config {
