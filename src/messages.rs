@@ -55,7 +55,6 @@ impl BleBeaconMessage {
                     print!("part is {}", part);
                 }
             }
-
         }
 
         let act_address_with_points = actuator[0..2].to_owned()

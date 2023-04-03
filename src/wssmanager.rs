@@ -25,13 +25,15 @@ fn parse_esp32_message(
                     let s_res = serde_json::from_str::<serde_json::Value>(status_string);
 
                     match s_res {
-                        Err(_r) =>{
+                        Err(_r) => {
                             println!("status_string {} {}", status_string, _r);
                             // we return true in case of errors so that the message is not forwarded
                             return true;
-                        },
+                        }
                         Ok(status_result) => {
-                            if let Some(updated_properties) = status_result.get("updated_properties") {
+                            if let Some(updated_properties) =
+                                status_result.get("updated_properties")
+                            {
                                 let vec_prop = updated_properties.as_array().unwrap();
                                 let mac_address_actuator =
                                     status_result.get("mac_address").unwrap().as_str().unwrap();
@@ -49,7 +51,10 @@ fn parse_esp32_message(
                                         if let Some(beacon_adv) = status_result.get("beacon_adv") {
                                             let beacon_adv_string = beacon_adv.as_str().unwrap();
 
-                                            println!("BEACON_ADV_PARSE from {} {}", mac_address_actuator, beacon_adv_string);
+                                            println!(
+                                                "BEACON_ADV_PARSE from {} {}",
+                                                mac_address_actuator, beacon_adv_string
+                                            );
                                             let b = BleBeaconMessage::from(
                                                 beacon_adv_string,
                                                 mac_address_actuator,
@@ -57,9 +62,11 @@ fn parse_esp32_message(
                                             let _ret = updates_channel.send(b);
                                         }
                                     } else if prop_str == "valve_operation" {
-                                        if let Some(valve_operation) = status_result.get("valve_operation")
+                                        if let Some(valve_operation) =
+                                            status_result.get("valve_operation")
                                         {
-                                            let valve_operation_string = valve_operation.as_str().unwrap();
+                                            let valve_operation_string =
+                                                valve_operation.as_str().unwrap();
 
                                             let b = BleBeaconMessage::from(
                                                 valve_operation_string,

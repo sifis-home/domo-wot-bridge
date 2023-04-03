@@ -41,7 +41,10 @@ impl GlobalShellyManager {
         if let Ok(mut shelly) = shelly_m {
             shelly.send_get_update().await;
             self.shelly_list.push(shelly);
-            println!("Shelly {} {} connected", shelly_disc_result.topic_name, shelly_disc_result.mac_address);
+            println!(
+                "Shelly {} {} connected",
+                shelly_disc_result.topic_name, shelly_disc_result.mac_address
+            );
         }
     }
 

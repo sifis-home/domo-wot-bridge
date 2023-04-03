@@ -1,9 +1,7 @@
 use sifis_dht::domocache::DomoEvent;
-use sifis_dht::domopersistentstorage::SqliteStorage;
-use sifis_dht::Keypair;
 use std::error::Error;
 
-use crate::{command_parser, utils};
+use crate::command_parser;
 
 pub enum DHTCommand {
     ActuatorCommand(serde_json::Value),
@@ -11,27 +9,12 @@ pub enum DHTCommand {
 }
 
 pub struct DHTManager {
-    pub cache: sifis_dht::domocache::DomoCache<SqliteStorage>,
+    pub cache: sifis_dht::domocache::DomoCache,
 }
 
 impl DHTManager {
-    pub async fn new(shared_key: &str, db_path: &str) -> Result<DHTManager, Box<dyn Error>> {
-        let storage = sifis_dht::domopersistentstorage::SqliteStorage::new(
-            db_path,
-            false
-        );
-        let mut pkcs8_der = utils::generate_rsa_key().1;
-        let local_key = Keypair::rsa_from_pkcs8(&mut pkcs8_der)
-            .map_err(|e| format!("Couldn't load key: {e:?}"))?;
-
-        let sifis_cache = sifis_dht::domocache::DomoCache::new(
-            false,
-            storage,
-            shared_key.to_owned(),
-            local_key,
-            false,
-        )
-        .await;
+    pub async fn new(cache_config: sifis_config::Cache) -> Result<DHTManager, Box<dyn Error>> {
+        let sifis_cache = sifis_dht::domocache::DomoCache::new(cache_config).await?;
 
         Ok(DHTManager { cache: sifis_cache })
     }

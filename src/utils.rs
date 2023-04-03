@@ -1,27 +1,6 @@
-use rsa::pkcs8::EncodePrivateKey;
-use rsa::RsaPrivateKey;
 use std::collections::HashMap;
+use std::time::SystemTime;
 
-pub fn generate_rsa_key() -> (Vec<u8>, Vec<u8>) {
-    let mut rng = rand::thread_rng();
-    let bits = 2048;
-    let private_key = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
-    let pem = private_key
-        .to_pkcs8_pem(Default::default())
-        .unwrap()
-        .as_bytes()
-        .to_vec();
-    let der = private_key.to_pkcs8_der().unwrap().as_ref().to_vec();
-    (pem, der)
-}
-
-use std::time::{SystemTime, UNIX_EPOCH};
-pub fn get_epoch_ms() -> u128 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis()
-}
 #[derive(Clone)]
 pub struct ValveData {
     pub desired_state: serde_json::Value,

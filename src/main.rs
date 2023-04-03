@@ -1,20 +1,20 @@
+use crate::bleutils::ContactStatus;
 use crate::dhtmanager::{DHTCommand, DHTManager};
 use crate::globalshellymanager::GlobalShellyManager;
+use crate::messages::{AuthCredMessage, BleBeaconMessage, ESP32CommandMessage, ESP32CommandType};
 use crate::shellymanager::ShellyManager;
+use crate::utils::{ValveCommandManager, ValveData};
+use crate::wssmanager::WssManager;
+use clap::Parser;
+use futures_util::{pin_mut, stream::StreamExt};
 use mdns::{Record, RecordKind};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Number};
+use sifis_config::Cache;
 use std::error::Error;
-use std::fs;
+use std::net::Ipv4Addr;
 use std::time::Duration;
 use tokio::time::Interval;
-use crate::bleutils::ContactStatus;
-use crate::messages::{AuthCredMessage, BleBeaconMessage, ESP32CommandMessage, ESP32CommandType};
-use crate::wssmanager::WssManager;
-use futures_util::{pin_mut, stream::StreamExt};
-use crate::utils::{ValveCommandManager, ValveData};
-use serde_json::{json, Number};
-use std::net::Ipv4Addr;
-use serde::{Deserialize, Serialize};
-use clap::Parser;
 
 mod bleutils;
 mod command_parser;
@@ -26,29 +26,6 @@ mod utils;
 mod wssmanager;
 
 const SERVICE_NAME: &str = "_webthing._tcp.local";
-
-#[derive(Parser, Debug, Serialize, Deserialize)]
-struct Config {
-    /// Path to a sqlite file
-    #[clap(parse(try_from_str))]
-    sqlite_file: String,
-    /// 32 bytes long shared key in hex format
-    #[clap(parse(try_from_str))]
-    shared_key: String,
-    #[clap(parse(try_from_str))]
-    node_id: u8,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            sqlite_file: String::from("/tmp/dht_db.sqlite"),
-            shared_key: String::from("test_shared_key"),
-            node_id: 1
-        }
-    }
-}
-
 
 pub struct ShellyDiscoveryResult {
     pub ip_address: String,
@@ -74,44 +51,19 @@ impl PingManager {
     }
 }
 
+#[derive(Parser, Debug, Serialize, Deserialize)]
+struct Opt {
+    #[clap(flatten)]
+    cache: Cache,
+
+    /// node_id
+    #[arg(short, long, default_value_t = 1)]
+    node_id: u8,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-
-    let mut config: Config = Default::default();
-
-    let mut configured = false;
-
-    if let Ok(toml_config_file_content) = fs::read_to_string("Config.toml") {
-
-        let cfg = toml_config_file_content.parse::<toml::Table>();
-
-        match cfg {
-            Ok(cfg) => {
-                println!("cfg {:?}", cfg);
-                if let Some(domo_wot_bridge_config) = cfg.get("domo_wot_bridge") {
-                    if let Ok(c)  = domo_wot_bridge_config.clone().try_into::<Config>() {
-                        config = c;
-                        configured = true;
-                    }
-                }
-            },
-            _ => {}
-        }
-
-    }
-
-    if !configured {
-        config = Config::parse();
-    }
-
-    let Config {
-            sqlite_file,
-            shared_key,
-            node_id
-    } = config;
-
-
-    println!("Parameters: sqlite_file {} shared_key {} node_id {}", sqlite_file, shared_key, node_id);
+    let opt = Opt::parse();
 
     env_logger::init();
 
@@ -127,18 +79,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut shelly_manager = GlobalShellyManager::new().await;
 
-
-    let mut dht_manager = dhtmanager::DHTManager::new(
-        &shared_key, &sqlite_file
-    )
-    .await?;
+    let mut dht_manager = dhtmanager::DHTManager::new(opt.cache).await?;
 
     let mut wss_mgr = WssManager::new(5000).await;
 
     let stream = mdns::discover::interface(
         SERVICE_NAME,
         Duration::from_secs(5),
-        Ipv4Addr::new(10, 0, node_id, 1),
+        Ipv4Addr::new(10, 0, opt.node_id, 1),
     )?
     .listen();
 
@@ -432,9 +380,11 @@ async fn handle_shelly_message(shelly_message: serde_json::Value, dht_manager: &
                 if let Some(status) = data.get("status") {
                     let status_string = status.as_str().unwrap();
 
-
-                    if let Ok(status_result) = serde_json::from_str::<serde_json::Value>(status_string) {
-                        let mac_address = status_result.get("mac_address").unwrap().as_str().unwrap();
+                    if let Ok(status_result) =
+                        serde_json::from_str::<serde_json::Value>(status_string)
+                    {
+                        let mac_address =
+                            status_result.get("mac_address").unwrap().as_str().unwrap();
 
                         let mac_address_with_points = mac_address[0..2].to_owned()
                             + ":"
@@ -450,7 +400,9 @@ async fn handle_shelly_message(shelly_message: serde_json::Value, dht_manager: &
 
                         let topic_name = status_result.get("topic_name").unwrap().as_str().unwrap();
 
-                        if let Ok(topic) = dht_manager.get_topic(topic_name, &mac_address_with_points) {
+                        if let Ok(topic) =
+                            dht_manager.get_topic(topic_name, &mac_address_with_points)
+                        {
                             let mut new_status = status_result.clone();
 
                             if let Some(value) = topic.get("value") {
@@ -463,24 +415,34 @@ async fn handle_shelly_message(shelly_message: serde_json::Value, dht_manager: &
                                             let mac_address = mac_address.as_str().unwrap();
                                             if let Some(id) = value.get("id") {
                                                 new_status["user_login"] =
-                                                    serde_json::Value::String(user_login.to_owned());
-                                                new_status["user_password"] = serde_json::Value::String(
-                                                    user_password.to_string(),
-                                                );
+                                                    serde_json::Value::String(
+                                                        user_login.to_owned(),
+                                                    );
+                                                new_status["user_password"] =
+                                                    serde_json::Value::String(
+                                                        user_password.to_string(),
+                                                    );
 
                                                 new_status["mac_address"] =
-                                                    serde_json::Value::String(mac_address.to_string());
+                                                    serde_json::Value::String(
+                                                        mac_address.to_string(),
+                                                    );
 
                                                 new_status["id"] = id.to_owned();
 
                                                 new_status["last_update_timestamp"] =
                                                     serde_json::Value::Number(Number::from(
-                                                        utils::get_epoch_ms() as u64,
+                                                        sifis_dht::utils::get_epoch_ms() as u64,
                                                     ));
 
-                                                let topic_uuid = topic["topic_uuid"].as_str().unwrap();
+                                                let topic_uuid =
+                                                    topic["topic_uuid"].as_str().unwrap();
                                                 dht_manager
-                                                    .write_topic(topic_name, topic_uuid, &new_status)
+                                                    .write_topic(
+                                                        topic_name,
+                                                        topic_uuid,
+                                                        &new_status,
+                                                    )
                                                     .await;
 
                                                 let _ret = update_actuator_connection(
@@ -489,7 +451,7 @@ async fn handle_shelly_message(shelly_message: serde_json::Value, dht_manager: &
                                                     topic_uuid,
                                                     &new_status,
                                                 )
-                                                    .await;
+                                                .await;
                                             }
                                         }
                                     }
@@ -497,9 +459,6 @@ async fn handle_shelly_message(shelly_message: serde_json::Value, dht_manager: &
                             }
                         }
                     }
-
-
-
                 }
             }
         }
@@ -549,8 +508,10 @@ async fn get_topic_from_actuator_topic(
             old_value = old_ene;
         }
 
-        let current_ene = actuator_topic["power_data"]
-            ["channel".to_owned() + channel_number_str]["energy"].as_f64().unwrap();
+        let current_ene = actuator_topic["power_data"]["channel".to_owned() + channel_number_str]
+            ["energy"]
+            .as_f64()
+            .unwrap();
 
         let total_ene = old_value + current_ene;
 
@@ -640,7 +601,9 @@ async fn get_topic_from_actuator_topic(
                 old_value = old_ene;
             }
 
-            let current_ene = actuator_topic["energy".to_owned() + channel_number_str].as_f64().unwrap();
+            let current_ene = actuator_topic["energy".to_owned() + channel_number_str]
+                .as_f64()
+                .unwrap();
 
             let total_ene = old_value + current_ene;
 
@@ -876,7 +839,6 @@ async fn handle_ble_update_message(
         let topic_name = topic["topic_name"].as_str().unwrap();
 
         if topic_name == "domo_ble_thermometer" {
-
             //println!("THERMO UPDATE {}", message.payload);
 
             if let Ok(bytes) = base64::decode(&message.payload) {
@@ -884,14 +846,13 @@ async fn handle_ble_update_message(
                 let beacon_adv_string = bytes.encode_hex::<String>();
                 //println!("BEACON THERMO ADV from {}: {}", message.mac_address, beacon_adv_string);
 
-
                 handle_ble_thermometer_update(
                     dht_manager,
                     &message.mac_address,
                     &beacon_adv_string,
                     &topic,
                 )
-                    .await;
+                .await;
             }
         }
 
@@ -910,7 +871,7 @@ async fn handle_ble_update_message(
                     &message.rssi,
                     &topic,
                 )
-                    .await;
+                .await;
             }
         }
 
@@ -950,7 +911,6 @@ async fn handle_ble_thermometer_update(
 
     let ret = bleutils::parse_atc(mac_address, message, token);
 
-
     if let Ok(m) = ret {
         //println!("DECRITTATO {} {} {}", m.temperature, m.humidity, m.battery);
         let value = serde_json::json!({
@@ -959,7 +919,7 @@ async fn handle_ble_thermometer_update(
             "battery":  m.battery,
             "token": token,
             "mac_address": mac_address,
-            "last_update_timestamp": serde_json::Value::Number(Number::from(utils::get_epoch_ms() as u64)),
+            "last_update_timestamp": serde_json::Value::Number(Number::from(sifis_dht::utils::get_epoch_ms() as u64)),
             "name": name,
             "area_name": area_name
         });
@@ -994,7 +954,6 @@ async fn handle_ble_contact_update(
 
         let data = len_hex_value.to_owned() + message + rssi_hex;
 
-
         //println!("mac {} token {} payload {}", mac_address, token, message);
 
         let ret = bleutils::parse_contact_sensor(mac_address, &data, token);
@@ -1009,7 +968,7 @@ async fn handle_ble_contact_update(
                     let value = serde_json::json!({
                     "status": val,
                     "token": token,
-                    "last_update_timestamp": serde_json::Value::Number(Number::from(utils::get_epoch_ms() as u64)),
+                    "last_update_timestamp": serde_json::Value::Number(Number::from(sifis_dht::utils::get_epoch_ms() as u64)),
                     "mac_address": mac_address,
                         "id": id,
                         "area_name": area_name
@@ -1031,7 +990,7 @@ async fn handle_ble_contact_update(
                 "status": val,
                 "token": token,
                 "mac_address": mac_address,
-                "last_update_timestamp": serde_json::Value::Number(Number::from(utils::get_epoch_ms() as u64)),
+                "last_update_timestamp": serde_json::Value::Number(Number::from(sifis_dht::utils::get_epoch_ms() as u64)),
                 "id": id,
                 "area_name": area_name
                 });
@@ -1064,7 +1023,7 @@ async fn handle_ble_valve_update(
     let value = serde_json::json!(
     {   "status": value,
         "mac_address": mac_address,
-        "last_update_timestamp": serde_json::Value::Number(Number::from(utils::get_epoch_ms() as u64)),
+        "last_update_timestamp": serde_json::Value::Number(Number::from(sifis_dht::utils::get_epoch_ms() as u64)),
         "name": name,
         "area_name": area_name
     });

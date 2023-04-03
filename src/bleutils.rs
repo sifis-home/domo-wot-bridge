@@ -111,7 +111,6 @@ pub fn decrypt_contact(
     //    hex::encode(nonce)
     //);
 
-
     // 4 bytes di mac len + 12 bytes di nonce
     type Cipher2 = Ccm<aes::Aes128, U4, U12>;
     let key = GenericArray::from_slice(key);

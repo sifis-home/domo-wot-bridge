@@ -9,7 +9,7 @@ vendored = ["sifis-dht/vendored"]
 
 [dependencies]
 axum = { version = "0.5.6", features = ["ws"] }
-clap = { version = "3.1.18", features = ["derive"] }
+clap = { version = "4.1.1", features = ["derive"] }
 toml = "0.7.3"
 axum-server = { version = "0.3", features = ["tls-rustls"] }
 axum-auth = "0.3.0"
@@ -30,7 +30,8 @@ aes = "0.8.1"
 hex-literal = "0.3.4"
 hex = "0.4.3"
 env_logger = "0.9.3"
-sifis-dht = { git = "https://github.com/sifis-home/libp2p-rust-dht" }
+sifis-dht = { git = "https://github.com/sifis-home/libp2p-rust-dht", branch="sqlx" }
+sifis-config = { git = "https://github.com/sifis-home/libp2p-rust-dht", branch="sqlx" }
 rsa = "0.6"
 pem-rfc7468 = "0.3"
 rand = "0.8"
