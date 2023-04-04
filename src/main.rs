@@ -10,7 +10,7 @@ use futures_util::{pin_mut, stream::StreamExt};
 use mdns::{Record, RecordKind};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Number};
-use sifis_config::Cache;
+use sifis_config::{Cache, ConfigParser};
 use std::error::Error;
 use std::net::Ipv4Addr;
 use std::time::Duration;
@@ -52,18 +52,30 @@ impl PingManager {
 }
 
 #[derive(Parser, Debug, Serialize, Deserialize)]
-struct Opt {
+struct DomoWotBridge {
     #[clap(flatten)]
-    cache: Cache,
+    pub cache: Cache,
 
     /// node_id
     #[arg(short, long, default_value_t = 1)]
-    node_id: u8,
+    pub node_id: u8,
+}
+
+
+#[derive(Parser, Debug, Serialize, Deserialize)]
+struct Opt {
+    #[clap(flatten)]
+    domo_wot_bridge: DomoWotBridge,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let opt = Opt::parse();
+
+    let opt = ConfigParser::<Opt>::new()
+        .with_config_path("/etc/domo/domo_wot_bridge.toml")
+        .parse();
+
+    let opt = opt.domo_wot_bridge;
 
     env_logger::init();
 
