@@ -61,7 +61,6 @@ struct DomoWotBridge {
     pub node_id: u8,
 }
 
-
 #[derive(Parser, Debug, Serialize, Deserialize)]
 struct Opt {
     #[clap(flatten)]
@@ -70,7 +69,6 @@ struct Opt {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-
     let opt = ConfigParser::<Opt>::new()
         .with_config_path("/etc/domo/domo_wot_bridge.toml")
         .parse();
