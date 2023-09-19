@@ -473,7 +473,7 @@ async fn handle_shelly_message(shelly_message: serde_json::Value, dht_manager: &
     }
 }
 
-async fn get_topic_from_actuator_topic(
+fn get_topic_from_actuator_topic(
     dht_manager: &DHTManager,
     source_topic_name: &str,
     source_topic_uuid: &str,
@@ -732,9 +732,7 @@ async fn update_actuator_connection(
                     target_channel_number,
                     actuator_topic,
                     target_topic_name,
-                )
-                .await
-                {
+                ) {
                     dht_manager
                         .write_topic(source_topic_name, source_topic_uuid, &status)
                         .await;
