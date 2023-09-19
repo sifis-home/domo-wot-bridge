@@ -30,7 +30,7 @@ impl DHTManager {
             let shelly_plus_topics = self.cache.get_topic_name(topic)?;
 
             let topics = shelly_plus_topics.as_array().unwrap();
-            for t in topics.iter() {
+            for t in topics {
                 if let Some(value) = t.get("value") {
                     if let Some(user_login) = value.get("user_login") {
                         if let Some(user_password) = value.get("user_password") {
@@ -63,7 +63,7 @@ impl DHTManager {
                 if let Some(value) = act.get("value") {
                     if let Some(mac) = value.get("mac_address") {
                         if mac == mac_address {
-                            return Ok(act.to_owned());
+                            return Ok(act.clone());
                         }
                     }
                 }
@@ -98,7 +98,7 @@ impl DHTManager {
                     if let Some(value) = act.get("value") {
                         if let Some(mac) = value.get("mac_address") {
                             if mac == mac_address_req {
-                                return Ok(act.to_owned());
+                                return Ok(act.clone());
                             }
                         }
                     }
@@ -116,7 +116,7 @@ impl DHTManager {
         value: &serde_json::Value,
     ) {
         self.cache
-            .write_value(topic_name, topic_uuid, value.to_owned())
+            .write_value(topic_name, topic_uuid, value.clone())
             .await;
     }
 
@@ -128,13 +128,13 @@ impl DHTManager {
             if let Some(command_type) = command.get("command_type") {
                 if command_type == "shelly_actuator_command" {
                     if let Some(value) = command.get("value") {
-                        return Ok(DHTCommand::ActuatorCommand(value.to_owned()));
+                        return Ok(DHTCommand::ActuatorCommand(value.clone()));
                     }
                 }
 
                 if command_type == "radiator_valve_command" {
                     if let Some(value) = command.get("value") {
-                        return Ok(DHTCommand::ValveCommand(value.to_owned()));
+                        return Ok(DHTCommand::ValveCommand(value.clone()));
                     }
                 }
 
@@ -168,7 +168,7 @@ impl DHTManager {
 
         if let DomoEvent::VolatileData(m) = data {
             //println!("RECEIVED COMMAND{}", m);
-            return self.handle_volatile_command(m.to_owned()).await;
+            return self.handle_volatile_command(m.clone()).await;
         }
 
         Err("not a volatile message".into())

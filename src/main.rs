@@ -115,7 +115,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                 //println!("TOPIC {} mac_address {}", topic, mac_address.to_string());
                                 let topic = topic.as_str().unwrap().to_owned();
                                 if topic == "shelly_1plus" || topic == "shelly_1pm_plus" || topic == "shelly_2pm_plus" {
-                                    println!("Shelly plus {}, {} connected" , topic, mac_address);
+                                    println!("Shelly plus {topic}, {mac_address} connected");
                                     shelly_plus_actuators.push(mac_address.as_str().unwrap().to_owned());
                                 }
                             }
@@ -145,9 +145,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
                 if let Some(Ok(response)) = res {
 
-                    let shelly_res = response.records()
-                                     .filter_map(get_shelly_discovery_result)
-                                     .next();
+                    let shelly_res = response.records().find_map(get_shelly_discovery_result);
 
                     if let Some(shelly) = shelly_res {
 
@@ -258,8 +256,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
                 let cmd = ESP32CommandMessage {
                                                 command_type: ESP32CommandType::Ping,
-                                                actuator_mac_address: String::from(""),
-                                                mac_address: String::from(""),
+                                                actuator_mac_address: String::new(),
+                                                mac_address: String::new(),
                                                 payload: json!({})
                                         };
 
@@ -293,7 +291,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                         command_type: ESP32CommandType::Actuator,
                                         mac_address: mac_string.to_owned(),
                                         payload: value.clone(),
-                                        actuator_mac_address: String::from("")
+                                        actuator_mac_address: String::new()
                                     };
 
                                     let _ret = wss_mgr.command_channel_tx.send(cmd);
@@ -438,7 +436,7 @@ async fn handle_shelly_message(shelly_message: serde_json::Value, dht_manager: &
                                                         mac_address.to_string(),
                                                     );
 
-                                                new_status["id"] = id.to_owned();
+                                                new_status["id"] = id.clone();
 
                                                 new_status["last_update_timestamp"] =
                                                     serde_json::Value::Number(Number::from(
@@ -704,7 +702,7 @@ async fn update_actuator_connection(
         .get_topic_name("domo_actuator_connection")?;
 
     let topics = topics.as_array().unwrap();
-    for topic in topics.iter() {
+    for topic in topics {
         if let Some(value) = topic.get("value") {
             if let Some(target_topic_name) = value.get("target_topic_name") {
                 if let Some(target_topic_uuid) = value.get("target_topic_uuid") {
@@ -775,6 +773,7 @@ async fn handle_shelly_command(
     }
 }
 
+#[must_use]
 pub fn get_shelly_discovery_result(record: &Record) -> Option<ShellyDiscoveryResult> {
     if record.name.contains("shelly_1plus") {
         return None;
@@ -816,7 +815,7 @@ pub fn get_shelly_discovery_result(record: &Record) -> Option<ShellyDiscoveryRes
                 ip_address: addr.to_string(),
                 topic_name: topic_name.to_string(),
                 mac_address: mac_address_with_points,
-                mdns_name: record.name.to_owned(),
+                mdns_name: record.name.clone(),
             };
             Some(res)
         }
@@ -828,7 +827,7 @@ pub fn get_shelly_discovery_result(record: &Record) -> Option<ShellyDiscoveryRes
                 ip_address: addr.to_string(),
                 topic_name: topic_name.to_string(),
                 mac_address: mac_address.to_string(),
-                mdns_name: record.name.to_owned(),
+                mdns_name: record.name.clone(),
             };
             Some(res)
         }
@@ -948,7 +947,7 @@ async fn handle_ble_contact_update(
     topic: &serde_json::Value,
 ) {
     if message.len() >= 58 {
-        println!("MESSAGE: {}", message);
+        println!("MESSAGE: {message}");
         let topic_uuid = topic["topic_uuid"].as_str().unwrap();
         let value_of_topic = &topic["value"];
         let token = value_of_topic["token"].as_str().unwrap();
@@ -958,7 +957,7 @@ async fn handle_ble_contact_update(
 
         let len_hex_value = "1d";
         let rssi_i = *rssi as i8;
-        let rssi_hex = format!("{:02x}", rssi_i);
+        let rssi_hex = format!("{rssi_i:02x}");
 
         let rssi_hex = rssi_hex.as_str();
 
@@ -1230,9 +1229,9 @@ async fn check_shelly_esp32_mode(
 
                         let cmd = ESP32CommandMessage {
                             command_type: ESP32CommandType::Actuator,
-                            mac_address: act.to_owned(),
+                            mac_address: act.clone(),
                             payload: shelly_action.clone(),
-                            actuator_mac_address: String::from(""),
+                            actuator_mac_address: String::new(),
                         };
 
                         let _ret = wss_mgr.command_channel_tx.send(cmd);

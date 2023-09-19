@@ -37,7 +37,7 @@ impl ShellyManager {
         let mut connect_attempts_counter = 0;
 
         let enc = encode(user_login.to_owned() + ":" + user_password);
-        let header = format!("Basic {}", enc);
+        let header = format!("Basic {enc}");
 
         loop {
             let ws_request = http::Request::builder()
@@ -111,8 +111,8 @@ impl ShellyManager {
 
         Ok(ShellyManager {
             ip: ip.to_owned(),
-            mac_address: mac_address.to_owned(),
-            url: url.to_owned(),
+            mac_address: mac_address.clone(),
+            url: url.clone(),
             write_shelly,
             read_shelly,
             last_pong_timestamp: SystemTime::now(),

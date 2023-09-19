@@ -53,8 +53,8 @@ pub fn decrypt_atc(
         //
         // println!("Res {} Res0 {} res1 {} res2 {} ", res.len(), res[0], res[1], res[2]);
 
-        let res0: f32 = res[0] as f32;
-        let res1: f32 = res[1] as f32;
+        let res0: f32 = f32::from(res[0]);
+        let res1: f32 = f32::from(res[1]);
         let res2: u8 = res[2];
 
         let temp = res0 / f32::from(2_u8) - f32::from(40_u16);
@@ -76,8 +76,8 @@ pub fn decrypt_atc(
         ////println!("{:02X?}", payload);
         ////println!("Res {} Res0 {} res1 {} res2 {} res3 {} res4 {} res5 {}", res.len(), res[0], res[1], res[2], res[3], res[4], res[5]);
 
-        let temp: u32 = res[1] as u32 * 256 + res[0] as u32;
-        let humi: u32 = res[3] as u32 * 256 + res[2] as u32;
+        let temp: u32 = u32::from(res[1]) * 256 + u32::from(res[0]);
+        let humi: u32 = u32::from(res[3]) * 256 + u32::from(res[2]);
         let batt: u8 = res[4];
 
         ////println!("temp {} humi {} ", temp, humi);
@@ -90,7 +90,7 @@ pub fn decrypt_atc(
         let res = AtcResult {
             temperature: temp,
             humidity: humi,
-            battery: batt as f32,
+            battery: f32::from(batt),
         };
 
         return Ok(res);
@@ -222,7 +222,7 @@ pub fn parse_atc(mac: &str, data: &str, token: &str) -> Result<AtcResult, Box<dy
     );
     */
 
-    let mut mac_str_inverted: String = String::from("");
+    let mut mac_str_inverted: String = String::new();
 
     for i in (0..mac_str.len()).step_by(2) {
         mac_str_inverted.insert_str(0, &mac_str[i..i + 2]);
@@ -254,7 +254,7 @@ pub fn parse_contact_sensor(
         }
     };
 
-    println!("DATA TO DECODE: {}", data);
+    println!("DATA TO DECODE: {data}");
     let data = hex::decode(data).expect("Decoding failed");
     let key = hex::decode(key).expect("Decoding failed");
 
@@ -264,7 +264,7 @@ pub fn parse_contact_sensor(
 
     let mac_str = mac.replace(':', "");
 
-    let mut mac_str_inverted: String = String::from("");
+    let mut mac_str_inverted: String = String::new();
 
     for i in (0..mac_str.len()).step_by(2) {
         mac_str_inverted.insert_str(0, &mac_str[i..i + 2]);

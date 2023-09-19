@@ -26,7 +26,7 @@ fn parse_esp32_message(
 
                     match s_res {
                         Err(_r) => {
-                            println!("status_string {} {}", status_string, _r);
+                            println!("status_string {status_string} {_r}");
                             // we return true in case of errors so that the message is not forwarded
                             return true;
                         }
@@ -52,8 +52,7 @@ fn parse_esp32_message(
                                             let beacon_adv_string = beacon_adv.as_str().unwrap();
 
                                             println!(
-                                                "BEACON_ADV_PARSE from {} {}",
-                                                mac_address_actuator, beacon_adv_string
+                                                "BEACON_ADV_PARSE from {mac_address_actuator} {beacon_adv_string}"
                                             );
                                             let b = BleBeaconMessage::from(
                                                 beacon_adv_string,
@@ -102,8 +101,7 @@ pub struct WssManager {
 impl WssManager {
     pub async fn new(http_port: u16) -> WssManager {
         let rootdir = std::env::var("CARGO_MANIFEST_DIR")
-            .map(|s| PathBuf::from(s).join("data"))
-            .unwrap_or_else(|_| "/etc/domo/".into());
+            .map_or_else(|_| "/etc/domo/".into(), |s| PathBuf::from(s).join("data"));
 
         let addr = SocketAddr::from(([0, 0, 0, 0], http_port));
 
@@ -176,11 +174,11 @@ impl WssManager {
 
         ws.on_upgrade(|mut socket| async move {
 
-            let mut esp32_mac_address = String::from("");
+            let mut esp32_mac_address = String::new();
 
             let mut last_pong_timestamp = SystemTime::now();
 
-            let mut pass = String::from("");
+            let mut pass = String::new();
 
             if let Some(password) = password {
                 pass = password;
@@ -315,7 +313,7 @@ impl WssManager {
                                     }
                                 },
                                 Err(e) => {
-                                    println!("ERROR {} {} ", esp32_mac_address, e);
+                                    println!("ERROR {esp32_mac_address} {e} ");
                                 }
                             }
                         }

@@ -273,7 +273,7 @@ pub async fn handle_rgbw_command(
 ) -> Result<DHTCommand, Box<dyn Error>> {
     if let Some(value) = command.get("value") {
         let topic_uuid = value.get("topic_uuid").unwrap().as_str().unwrap();
-        let desired_state: serde_json::Value = value.get("desired_state").unwrap().to_owned();
+        let desired_state: serde_json::Value = value.get("desired_state").unwrap().clone();
 
         let dht_connection_topic = dht_manager
             .cache

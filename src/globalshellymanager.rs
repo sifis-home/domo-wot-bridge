@@ -20,7 +20,7 @@ impl GlobalShellyManager {
         user_login: String,
         user_password: String,
     ) {
-        for shelly in self.shelly_list.iter() {
+        for shelly in &self.shelly_list {
             if shelly.mac_address == shelly_disc_result.mac_address
                 && shelly.ip == shelly_disc_result.ip_address
             {
@@ -49,7 +49,7 @@ impl GlobalShellyManager {
     }
 
     pub async fn send_ping(&mut self) {
-        for shelly in self.shelly_list.iter_mut() {
+        for shelly in &mut self.shelly_list {
             shelly.send_ping().await;
         }
     }
@@ -59,7 +59,7 @@ impl GlobalShellyManager {
         mac_address: &str,
         action_payload: &serde_json::Value,
     ) -> Result<String, Box<dyn Error>> {
-        for shelly in self.shelly_list.iter_mut() {
+        for shelly in &mut self.shelly_list {
             if shelly.mac_address == mac_address {
                 shelly.send_action(action_payload).await;
                 //println!("DOMO: SHELLY_ACTION_SENT");
@@ -75,14 +75,14 @@ impl GlobalShellyManager {
     }
 
     pub async fn wait_for_shelly_message(&mut self) -> Result<serde_json::Value, Box<dyn Error>> {
-        let mut mac_address: String = String::from("");
+        let mut mac_address: String = String::new();
 
         if self.shelly_list.is_empty() {
             let ret = self.sleep_long().await;
             return ret;
         } else {
             let mut futures = FuturesUnordered::new();
-            for shelly in self.shelly_list.iter_mut() {
+            for shelly in &mut self.shelly_list {
                 futures.push(shelly.wait_for_shelly_message());
             }
 
