@@ -223,3 +223,137 @@ pub fn somo_window_sensor_door_sensor(
             actuator_topic["input".to_owned() + channel_number_str].clone();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn light_siren_switch_with_energy() {
+        let actuator_topic = json!({
+            "output7": "my_status",
+            "power7": "my_power",
+            "energy7": 42.5,
+            "updated_properties": ["prop1", "prop2", "power7", "energy7"],
+        });
+
+        let mut source_topic = json!({
+            "value": {
+                "status": "old_status",
+                "energy": 7.5,
+            }
+        });
+
+        mangle_domo_light_siren_switch(&mut source_topic, "7", &actuator_topic, "dummy");
+
+        assert_eq!(
+            source_topic,
+            json!({
+                "value": {
+                    "status": "my_status",
+                    "power": "my_power",
+                    "energy": 50.,
+                    "updated_properties": [
+                        "power", "energy",
+                    ]
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn light_siren_switch_without_energy() {
+        let actuator_topic = json!({
+            "output7": "my_status",
+            "power7": "my_power",
+            "energy7": 42.5,
+            "updated_properties": ["prop1", "prop2", "power7", "energy7"],
+        });
+
+        let mut source_topic = json!({
+            "value": {
+                "status": "old_status",
+            }
+        });
+
+        mangle_domo_light_siren_switch(&mut source_topic, "7", &actuator_topic, "dummy");
+
+        assert_eq!(
+            source_topic,
+            json!({
+                "value": {
+                    "status": "my_status",
+                    "power": "my_power",
+                    "energy": 42.5,
+                    "updated_properties": [
+                        "power", "energy",
+                    ]
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn light_siren_switch_empty_updated_properties() {
+        let actuator_topic = json!({
+            "output7": "my_status",
+            "power7": "my_power",
+            "energy7": 42.5,
+            "updated_properties": ["prop1"],
+        });
+
+        let mut source_topic = json!({
+            "value": {
+                "status": "old_status",
+            }
+        });
+
+        mangle_domo_light_siren_switch(&mut source_topic, "7", &actuator_topic, "dummy");
+
+        assert_eq!(
+            source_topic,
+            json!({
+                "value": {
+                    "status": "my_status",
+                    "power": "my_power",
+                    "energy": 42.5,
+                    "updated_properties": [],
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn light_siren_switch_with_shelly_1() {
+        let actuator_topic = json!({
+            "output7": "my_status",
+            "power7": "my_power",
+            "energy7": 42.5,
+            "updated_properties": ["prop1", "prop2", "power7", "energy7"],
+        });
+
+        let mut source_topic = json!({
+            "value": {
+                "status": "old_status",
+                "energy": 7.5,
+            }
+        });
+
+        mangle_domo_light_siren_switch(&mut source_topic, "7", &actuator_topic, "shelly_1");
+
+        assert_eq!(
+            source_topic,
+            json!({
+                "value": {
+                    "status": "my_status",
+                    "energy": 7.5,
+                    "updated_properties": [
+                        "power", "energy",
+                    ]
+                }
+            })
+        );
+    }
+}
