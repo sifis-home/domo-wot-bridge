@@ -22,6 +22,7 @@ mod dhtmanager;
 mod globalshellymanager;
 mod messages;
 mod shellymanager;
+mod topic_from_actuator_topic;
 mod utils;
 mod wssmanager;
 
@@ -481,211 +482,101 @@ fn get_topic_from_actuator_topic(
     actuator_topic: &serde_json::Value,
     target_topic_name: &str,
 ) -> Result<serde_json::Value, Box<dyn Error>> {
-    //println!("ACTUATOR_TOPIC {}", actuator_topic);
-    let mut source_topic = dht_manager
+    let source_topic = dht_manager
         .cache
         .get_topic_uuid(source_topic_name, source_topic_uuid)?;
 
+    get_topic_from_actuator_topic_inner(
+        source_topic,
+        source_topic_name,
+        channel_number,
+        actuator_topic,
+        target_topic_name,
+    )
+}
+
+fn get_topic_from_actuator_topic_inner(
+    mut source_topic: serde_json::Value,
+    source_topic_name: &str,
+    channel_number: u64,
+    actuator_topic: &serde_json::Value,
+    target_topic_name: &str,
+) -> Result<serde_json::Value, Box<dyn Error>> {
+    //println!("ACTUATOR_TOPIC {}", actuator_topic);
     let channel_number_str = channel_number.to_string();
 
     let channel_number_str = channel_number_str.as_str();
 
-    if source_topic_name == "domo_power_energy_sensor" {
-        let updated_props = actuator_topic["updated_properties"].as_array().unwrap();
-
-        let mut found = false;
-        for prop in updated_props {
-            let prop = prop.as_str().unwrap();
-            if prop == "power_data" {
-                found = true;
-            }
+    match source_topic_name {
+        "domo_power_energy_sensor" => {
+            topic_from_actuator_topic::mangle_domo_power_energy_sensor(
+                &mut source_topic,
+                channel_number_str,
+                actuator_topic,
+            )?;
         }
 
-        if !found {
-            return Err("not update".into());
+        "domo_light_dimmable" if target_topic_name == "shelly_dimmer" => {
+            topic_from_actuator_topic::mangle_domo_light_dimmable_shelly_dimmer(
+                &mut source_topic,
+                actuator_topic,
+            );
         }
 
-        source_topic["value"]["power"] = actuator_topic["power_data"]
-            ["channel".to_owned() + channel_number_str]["active_power"]
-            .clone();
-
-        let old_ene = source_topic["value"]["energy"].as_f64();
-
-        let mut old_value: f64 = 0.0;
-        if let Some(old_ene) = old_ene {
-            old_value = old_ene;
+        "domo_light_dimmable" if target_topic_name == "shelly_rgbw" => {
+            topic_from_actuator_topic::mangle_domo_light_dimmable_shelly_rgbw(
+                &mut source_topic,
+                channel_number,
+                actuator_topic,
+            );
         }
 
-        let current_ene = actuator_topic["power_data"]["channel".to_owned() + channel_number_str]
-            ["energy"]
-            .as_f64()
-            .unwrap();
-
-        let total_ene = old_value + current_ene;
-
-        source_topic["value"]["energy"] = serde_json::Value::from(total_ene);
-
-        let props = vec![
-            serde_json::Value::String("power".to_owned()),
-            serde_json::Value::String("energy".to_owned()),
-        ];
-
-        source_topic["value"]["updated_properties"] = serde_json::Value::Array(props);
-    }
-
-    if source_topic_name == "domo_light_dimmable" {
-        if target_topic_name == "shelly_dimmer" {
-            source_topic["value"]["status"] = actuator_topic["dimmer_status"].clone();
-            source_topic["value"]["power"] = actuator_topic["power1"].clone();
-
-            let old_ene = source_topic["value"]["energy"].as_f64();
-
-            let mut old_value: f64 = 0.0;
-            if let Some(old_ene) = old_ene {
-                old_value = old_ene;
-            }
-
-            let current_ene = actuator_topic["energy1"].as_f64().unwrap();
-
-            let total_ene = old_value + current_ene;
-
-            source_topic["value"]["energy"] = serde_json::Value::from(total_ene);
-
-            let updated_props = actuator_topic["updated_properties"].as_array().unwrap();
-
-            let mut props = Vec::new();
-
-            for prop in updated_props {
-                if prop == "power1" {
-                    props.push(serde_json::Value::String("power".to_owned()));
-                }
-                if prop == "energy1" {
-                    props.push(serde_json::Value::String("energy".to_owned()));
-                }
-            }
-
-            source_topic["value"]["updated_properties"] = serde_json::Value::Array(props);
-        } else if target_topic_name == "shelly_rgbw" {
-            let _val = 0;
-            if channel_number == 1 {
-                source_topic["value"]["status"] = actuator_topic["rgbw_status"]["r"].clone();
-            }
-            if channel_number == 2 {
-                source_topic["value"]["status"] = actuator_topic["rgbw_status"]["g"].clone();
-            }
-
-            if channel_number == 3 {
-                source_topic["value"]["status"] = actuator_topic["rgbw_status"]["b"].clone();
-            }
-
-            if channel_number == 4 {
-                source_topic["value"]["status"] = actuator_topic["rgbw_status"]["w"].clone();
-            }
-        }
-    }
-
-    if source_topic_name == "domo_rgbw_light" {
-        source_topic["value"]["r"] = actuator_topic["rgbw_status"]["r"].clone();
-        source_topic["value"]["g"] = actuator_topic["rgbw_status"]["g"].clone();
-        source_topic["value"]["b"] = actuator_topic["rgbw_status"]["b"].clone();
-        source_topic["value"]["w"] = actuator_topic["rgbw_status"]["w"].clone();
-    }
-
-    if source_topic_name == "domo_light"
-        || source_topic_name == "domo_siren"
-        || source_topic_name == "domo_switch"
-    {
-        source_topic["value"]["status"] =
-            actuator_topic["output".to_owned() + channel_number_str].clone();
-
-        if target_topic_name != "shelly_1" && target_topic_name != "shelly_1plus" {
-            source_topic["value"]["power"] =
-                actuator_topic["power".to_owned() + channel_number_str].clone();
-
-            let old_ene = source_topic["value"]["energy"].as_f64();
-
-            let mut old_value: f64 = 0.0;
-            if let Some(old_ene) = old_ene {
-                old_value = old_ene;
-            }
-
-            let current_ene = actuator_topic["energy".to_owned() + channel_number_str]
-                .as_f64()
-                .unwrap();
-
-            let total_ene = old_value + current_ene;
-
-            source_topic["value"]["energy"] = serde_json::Value::from(total_ene);
+        "domo_rgbw_light" => {
+            topic_from_actuator_topic::mangle_domo_rgbw_light(&mut source_topic, actuator_topic);
         }
 
-        let updated_props = actuator_topic["updated_properties"].as_array().unwrap();
-
-        //println!("UPDATED PROPS {:?}", updated_props);
-
-        let mut props = Vec::new();
-
-        for prop in updated_props {
-            let prop_str = prop.as_str().unwrap();
-
-            //println!("prop_str {}", prop_str);
-
-            if prop_str == ("power".to_owned() + channel_number_str) {
-                //println!("pushing power {}", channel_number_str);
-                props.push(serde_json::Value::String("power".to_owned()));
-            }
-
-            if prop_str == ("energy".to_owned() + channel_number_str) {
-                //println!("pushing power {}", channel_number_str);
-                props.push(serde_json::Value::String("energy".to_owned()));
-            }
+        "domo_light" | "domo_siren" | "domo_switch" => {
+            topic_from_actuator_topic::mangle_domo_light_siren_switch(
+                &mut source_topic,
+                channel_number_str,
+                actuator_topic,
+                target_topic_name,
+            );
         }
 
-        source_topic["value"]["updated_properties"] = serde_json::Value::Array(props);
-    }
-
-    if source_topic_name == "domo_floor_valve" {
-        source_topic["value"]["status"] =
-            actuator_topic["output".to_owned() + channel_number_str].clone();
-    }
-
-    if source_topic_name == "domo_roller_shutter" || source_topic_name == "domo_garage_gate" {
-        source_topic["value"]["shutter_status"] = actuator_topic["shutter_status"].clone();
-    }
-
-    if source_topic_name == "domo_pir_sensor"
-        || source_topic_name == "domo_radar_sensor"
-        || source_topic_name == "domo_button"
-        || source_topic_name == "domo_bistable_button"
-    {
-        let updated_props = actuator_topic["updated_properties"].as_array().unwrap();
-
-        //println!(
-        //    "UPDATED_PROPS {:?} channel_number_str {}",
-        //    updated_props, channel_number_str
-        //);
-
-        let mut found = false;
-        for prop in updated_props {
-            let prop = prop.as_str().unwrap();
-            if prop == ("input".to_owned() + channel_number_str) {
-                source_topic["value"]["status"] =
-                    actuator_topic["input".to_owned() + channel_number_str].clone();
-                found = true;
-            }
+        "domo_floor_valve" => {
+            topic_from_actuator_topic::mangle_domo_floor_valve(
+                &mut source_topic,
+                channel_number_str,
+                actuator_topic,
+            );
         }
 
-        if !found {
-            return Err("not update".into());
+        "domo_roller_shutter" | "domo_garage_gate" => {
+            topic_from_actuator_topic::mangle_domo_roller_shutter_garage_gate(
+                &mut source_topic,
+                actuator_topic,
+            );
         }
-    }
 
-    if source_topic_name == "domo_window_sensor" || source_topic_name == "domo_door_sensor" {
-        if target_topic_name == "domo_ble_contact" {
-            source_topic["value"]["status"] = actuator_topic["status"].clone();
-        } else {
-            source_topic["value"]["status"] =
-                actuator_topic["input".to_owned() + channel_number_str].clone();
+        "domo_pir_sensor" | "domo_radar_sensor" | "domo_button" | "domo_bistable_button" => {
+            topic_from_actuator_topic::mangle_domo_pir_sensor_radar_sensor_button_bistable_button(
+                &mut source_topic,
+                channel_number_str,
+                actuator_topic,
+            )?;
         }
+
+        "domo_window_sensor" | "domo_door_sensor" => {
+            topic_from_actuator_topic::somo_window_sensor_door_sensor(
+                &mut source_topic,
+                channel_number_str,
+                actuator_topic,
+                target_topic_name,
+            );
+        }
+
+        _ => {}
     }
 
     Ok(source_topic["value"].clone())
