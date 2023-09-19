@@ -703,12 +703,15 @@ async fn update_actuator_connection(
 
     let topics = topics.as_array().unwrap();
     for topic in topics {
-        if let Some(ActuatorConnection {
-            target_topic_name,
-            target_topic_uuid,
-            target_channel_number,
-            source_topic_name,
-            source_topic_uuid,
+        if let Some(actuator_connection::Topic {
+            value:
+                actuator_connection::Value {
+                    target_topic_name,
+                    target_topic_uuid,
+                    target_channel_number,
+                    source_topic_name,
+                },
+            topic_uuid: source_topic_uuid,
         }) = parse_actuator_connection_topic(topic)
         {
             if topic_uuid == target_topic_uuid && topic_name == target_topic_name {
@@ -743,41 +746,29 @@ async fn update_actuator_connection(
     Ok(())
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct ActuatorConnection<'a> {
-    target_topic_name: &'a str,
-    target_topic_uuid: &'a str,
-    target_channel_number: u64,
-    source_topic_name: &'a str,
-    source_topic_uuid: &'a str,
-}
+pub mod actuator_connection {
+    use serde::{Deserialize, Serialize};
 
-fn parse_actuator_connection_topic(topic: &serde_json::Value) -> Option<ActuatorConnection<'_>> {
-    if let Some(value) = topic.get("value") {
-        if let Some(target_topic_name) = value.get("target_topic_name") {
-            if let Some(target_topic_uuid) = value.get("target_topic_uuid") {
-                if let Some(target_channel_number) = value.get("target_channel_number") {
-                    if let Some(source_topic_name) = value.get("source_topic_name") {
-                        let target_topic_name = target_topic_name.as_str().unwrap();
-                        let target_topic_uuid = target_topic_uuid.as_str().unwrap();
-                        let target_channel_number = target_channel_number.as_u64().unwrap();
-                        let source_topic_name = source_topic_name.as_str().unwrap();
-                        let source_topic_uuid = topic["topic_uuid"].as_str().unwrap();
-
-                        return Some(ActuatorConnection {
-                            target_topic_name,
-                            target_topic_uuid,
-                            target_channel_number,
-                            source_topic_name,
-                            source_topic_uuid,
-                        });
-                    }
-                }
-            }
-        }
+    #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct Topic<'a> {
+        pub value: Value<'a>,
+        pub topic_uuid: &'a str,
     }
 
-    None
+    #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct Value<'a> {
+        pub target_topic_name: &'a str,
+        pub target_topic_uuid: &'a str,
+        pub target_channel_number: u64,
+        pub source_topic_name: &'a str,
+    }
+}
+
+#[deprecated]
+fn parse_actuator_connection_topic(
+    topic: &serde_json::Value,
+) -> Option<actuator_connection::Topic<'_>> {
+    actuator_connection::Topic::deserialize(topic).ok()
 }
 
 async fn handle_shelly_command(
@@ -1292,13 +1283,15 @@ mod tests {
 
         assert_eq!(
             parse_actuator_connection_topic(&data).unwrap(),
-            ActuatorConnection {
-                target_topic_name: "str1",
-                target_topic_uuid: "str2",
-                target_channel_number: 42,
-                source_topic_name: "str3",
-                source_topic_uuid: "str4",
-            }
+            actuator_connection::Topic {
+                value: actuator_connection::Value {
+                    target_topic_name: "str1",
+                    target_topic_uuid: "str2",
+                    target_channel_number: 42,
+                    source_topic_name: "str3",
+                },
+                topic_uuid: "str4",
+            },
         );
     }
 
