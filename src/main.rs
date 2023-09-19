@@ -703,7 +703,7 @@ async fn update_actuator_connection(
 
     let topics = topics.as_array().unwrap();
     for topic in topics {
-        if let Some(actuator_connection::Topic {
+        if let Ok(actuator_connection::Topic {
             value:
                 actuator_connection::Value {
                     target_topic_name,
@@ -712,7 +712,7 @@ async fn update_actuator_connection(
                     source_topic_name,
                 },
             topic_uuid: source_topic_uuid,
-        }) = parse_actuator_connection_topic(topic)
+        }) = actuator_connection::Topic::deserialize(topic)
         {
             if topic_uuid == target_topic_uuid && topic_name == target_topic_name {
                 //println!(
@@ -762,13 +762,6 @@ pub mod actuator_connection {
         pub target_channel_number: u64,
         pub source_topic_name: &'a str,
     }
-}
-
-#[deprecated]
-fn parse_actuator_connection_topic(
-    topic: &serde_json::Value,
-) -> Option<actuator_connection::Topic<'_>> {
-    actuator_connection::Topic::deserialize(topic).ok()
 }
 
 async fn handle_shelly_command(
@@ -1282,7 +1275,7 @@ mod tests {
         });
 
         assert_eq!(
-            parse_actuator_connection_topic(&data).unwrap(),
+            actuator_connection::Topic::deserialize(&data).unwrap(),
             actuator_connection::Topic {
                 value: actuator_connection::Value {
                     target_topic_name: "str1",
@@ -1297,7 +1290,7 @@ mod tests {
 
     #[test]
     fn parse_invalid_actuator_connection_topic() {
-        assert!(parse_actuator_connection_topic(&json!({
+        assert!(actuator_connection::Topic::deserialize(&json!({
             "value": {
                 "target_topic_uuid": "str2",
                 "target_channel_number": 42,
@@ -1305,9 +1298,9 @@ mod tests {
             },
             "topic_uuid": "str4",
         }))
-        .is_none());
+        .is_err());
 
-        assert!(parse_actuator_connection_topic(&json!({
+        assert!(actuator_connection::Topic::deserialize(&json!({
             "value": {
                 "target_topic_name": "str1",
                 "target_channel_number": 42,
@@ -1315,9 +1308,9 @@ mod tests {
             },
             "topic_uuid": "str4",
         }))
-        .is_none());
+        .is_err());
 
-        assert!(parse_actuator_connection_topic(&json!({
+        assert!(actuator_connection::Topic::deserialize(&json!({
             "value": {
                 "target_topic_name": "str1",
                 "target_topic_uuid": "str2",
@@ -1325,9 +1318,9 @@ mod tests {
             },
             "topic_uuid": "str4",
         }))
-        .is_none());
+        .is_err());
 
-        assert!(parse_actuator_connection_topic(&json!({
+        assert!(actuator_connection::Topic::deserialize(&json!({
             "value": {
                 "target_topic_name": "str1",
                 "target_topic_uuid": "str2",
@@ -1335,6 +1328,6 @@ mod tests {
             },
             "topic_uuid": "str4",
         }))
-        .is_none());
+        .is_err());
     }
 }
