@@ -703,51 +703,81 @@ async fn update_actuator_connection(
 
     let topics = topics.as_array().unwrap();
     for topic in topics {
-        if let Some(value) = topic.get("value") {
-            if let Some(target_topic_name) = value.get("target_topic_name") {
-                if let Some(target_topic_uuid) = value.get("target_topic_uuid") {
-                    if let Some(target_channel_number) = value.get("target_channel_number") {
-                        if let Some(source_topic_name) = value.get("source_topic_name") {
-                            let target_topic_name = target_topic_name.as_str().unwrap();
-                            let target_topic_uuid = target_topic_uuid.as_str().unwrap();
-                            let target_channel_number = target_channel_number.as_u64().unwrap();
-                            let source_topic_name = source_topic_name.as_str().unwrap();
-                            let source_topic_uuid = topic["topic_uuid"].as_str().unwrap();
+        if let Some(ActuatorConnection {
+            target_topic_name,
+            target_topic_uuid,
+            target_channel_number,
+            source_topic_name,
+            source_topic_uuid,
+        }) = parse_actuator_connection_topic(topic)
+        {
+            if topic_uuid == target_topic_uuid && topic_name == target_topic_name {
+                //println!(
+                //    "target_topic_name {} target_topic_uuid {}",
+                //    target_topic_name, target_topic_uuid
+                //);
+                //println!(
+                //    "source_topic_name {} source_topic_uuid {}",
+                //    source_topic_name, source_topic_uuid
+                //);
+                //println!("target_channel_number {}", target_channel_number);
 
-                            if topic_uuid == target_topic_uuid && topic_name == target_topic_name {
-                                //println!(
-                                //    "target_topic_name {} target_topic_uuid {}",
-                                //    target_topic_name, target_topic_uuid
-                                //);
-                                //println!(
-                                //    "source_topic_name {} source_topic_uuid {}",
-                                //    source_topic_name, source_topic_uuid
-                                //);
-                                //println!("target_channel_number {}", target_channel_number);
-
-                                if let Ok(status) = get_topic_from_actuator_topic(
-                                    dht_manager,
-                                    source_topic_name,
-                                    source_topic_uuid,
-                                    target_channel_number,
-                                    actuator_topic,
-                                    target_topic_name,
-                                )
-                                .await
-                                {
-                                    dht_manager
-                                        .write_topic(source_topic_name, source_topic_uuid, &status)
-                                        .await;
-                                }
-                            }
-                        }
-                    }
+                if let Ok(status) = get_topic_from_actuator_topic(
+                    dht_manager,
+                    source_topic_name,
+                    source_topic_uuid,
+                    target_channel_number,
+                    actuator_topic,
+                    target_topic_name,
+                )
+                .await
+                {
+                    dht_manager
+                        .write_topic(source_topic_name, source_topic_uuid, &status)
+                        .await;
                 }
             }
         }
     }
 
     Ok(())
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct ActuatorConnection<'a> {
+    target_topic_name: &'a str,
+    target_topic_uuid: &'a str,
+    target_channel_number: u64,
+    source_topic_name: &'a str,
+    source_topic_uuid: &'a str,
+}
+
+fn parse_actuator_connection_topic(topic: &serde_json::Value) -> Option<ActuatorConnection<'_>> {
+    if let Some(value) = topic.get("value") {
+        if let Some(target_topic_name) = value.get("target_topic_name") {
+            if let Some(target_topic_uuid) = value.get("target_topic_uuid") {
+                if let Some(target_channel_number) = value.get("target_channel_number") {
+                    if let Some(source_topic_name) = value.get("source_topic_name") {
+                        let target_topic_name = target_topic_name.as_str().unwrap();
+                        let target_topic_uuid = target_topic_uuid.as_str().unwrap();
+                        let target_channel_number = target_channel_number.as_u64().unwrap();
+                        let source_topic_name = source_topic_name.as_str().unwrap();
+                        let source_topic_uuid = topic["topic_uuid"].as_str().unwrap();
+
+                        return Some(ActuatorConnection {
+                            target_topic_name,
+                            target_topic_uuid,
+                            target_channel_number,
+                            source_topic_name,
+                            source_topic_uuid,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
 
 async fn handle_shelly_command(
