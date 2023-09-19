@@ -1271,3 +1271,77 @@ async fn check_shelly_esp32_mode(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn parse_valid_actuator_connection_topic() {
+        let data = json!({
+            "value": {
+                "target_topic_name": "str1",
+                "target_topic_uuid": "str2",
+                "target_channel_number": 42,
+                "source_topic_name": "str3",
+            },
+            "topic_uuid": "str4",
+        });
+
+        assert_eq!(
+            parse_actuator_connection_topic(&data).unwrap(),
+            ActuatorConnection {
+                target_topic_name: "str1",
+                target_topic_uuid: "str2",
+                target_channel_number: 42,
+                source_topic_name: "str3",
+                source_topic_uuid: "str4",
+            }
+        );
+    }
+
+    #[test]
+    fn parse_invalid_actuator_connection_topic() {
+        assert!(parse_actuator_connection_topic(&json!({
+            "value": {
+                "target_topic_uuid": "str2",
+                "target_channel_number": 42,
+                "source_topic_name": "str3",
+            },
+            "topic_uuid": "str4",
+        }))
+        .is_none());
+
+        assert!(parse_actuator_connection_topic(&json!({
+            "value": {
+                "target_topic_name": "str1",
+                "target_channel_number": 42,
+                "source_topic_name": "str3",
+            },
+            "topic_uuid": "str4",
+        }))
+        .is_none());
+
+        assert!(parse_actuator_connection_topic(&json!({
+            "value": {
+                "target_topic_name": "str1",
+                "target_topic_uuid": "str2",
+                "source_topic_name": "str3",
+            },
+            "topic_uuid": "str4",
+        }))
+        .is_none());
+
+        assert!(parse_actuator_connection_topic(&json!({
+            "value": {
+                "target_topic_name": "str1",
+                "target_topic_uuid": "str2",
+                "target_channel_number": 42,
+            },
+            "topic_uuid": "str4",
+        }))
+        .is_none());
+    }
+}
